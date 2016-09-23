@@ -1,0 +1,17 @@
+[package]
+authors = ["Josh Leverette <coder543@gmail.com>"]
+name = "dataplotlib"
+version = "0.1.0"
+
+[lib]
+name = "dataplotlib"
+path = "./src/lib.rs"
+
+[dependencies]
+conrod = "0.44.0"
+kiss3d = "0.7.0"
+nalgebra = "0.10.1"
+piston = "0.25.0"
+rayon = "0.4.2"
+rulinalg = "0.3.2"
+piston_window = "0.52.0"
