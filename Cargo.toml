@@ -2,6 +2,10 @@
 authors = ["Josh Leverette <coder543@gmail.com>"]
 name = "dataplotlib"
 version = "0.1.0"
+license = "MIT"
+keywords = ["plotting", "graphing", "matplotlib", "scientific"]
+description = "dataplotlib is a(n early stage) hassle-free library for plotting data"
+documentation = "https://docs.rs/dataplotlib/"
 
 [lib]
 name = "dataplotlib"
