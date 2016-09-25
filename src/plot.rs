@@ -1,3 +1,7 @@
+//! **plot** is the backend that actually renders the plots.
+//!
+//! Users of **dataplotlib** should not need to access **plot**.
+
 use piston_window;
 use piston_window::*;
 use std::cmp::min;
