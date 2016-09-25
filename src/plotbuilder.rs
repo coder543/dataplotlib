@@ -1,5 +1,4 @@
-use conrod;
-use std::marker::{Send, Sync};
+use std::marker::Sync;
 
 pub type PlotFn = &'static (Fn(f64) -> f64 + Sync);
 pub type AnimFn = &'static (Fn(f64, f64) -> f64 + Sync);
@@ -7,13 +6,13 @@ pub type AnimFn = &'static (Fn(f64, f64) -> f64 + Sync);
 #[derive(Clone)]
 pub enum PlotVals2D {
     Xy(Vec<(f64, f64)>),
-    XyColor(conrod::color::Color, Vec<f64>, Vec<f64>),
+    XyColor([f32; 4], Vec<f64>, Vec<f64>),
     Fun(PlotFn),
-    FunColor(conrod::color::Color, PlotFn),
+    FunColor([f32; 4], PlotFn),
     AnimFun(AnimFn),
-    AnimFunColor(conrod::color::Color, AnimFn),
+    AnimFunColor([f32; 4], AnimFn),
     Bars(Vec<f64>),
-    BarsColor(conrod::color::Color, Vec<f64>),
+    BarsColor([f32; 4], Vec<f64>),
 }
 
 #[derive(Clone)]
@@ -30,7 +29,10 @@ pub struct PlotBuilder2D {
     pub y_gridlines: bool,
     pub x_axis: bool,
     pub x_gridlines: bool,
+    pub font_path: String,
 }
+
+const DEFAULT_FONT: &'static str = "/usr/share/fonts/truetype/freefont/FreeSans.ttf";
 
 impl PlotBuilder2D {
     pub fn simple_xy(xy: Vec<(f64, f64)>) -> PlotBuilder2D {
@@ -47,6 +49,7 @@ impl PlotBuilder2D {
             y_gridlines: true,
             x_axis: true,
             x_gridlines: true,
+            font_path: DEFAULT_FONT.to_string(),
         }
     }
 
@@ -64,6 +67,7 @@ impl PlotBuilder2D {
             y_gridlines: true,
             x_axis: true,
             x_gridlines: true,
+            font_path: DEFAULT_FONT.to_string(),
         }
     }
 }

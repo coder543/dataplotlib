@@ -1,5 +1,5 @@
 use std::thread;
-use plotbuilder::{PlotBuilder2D, PlotVals2D};
+use plotbuilder::PlotBuilder2D;
 use plot::Plot;
 
 pub struct Plotter {
@@ -28,20 +28,20 @@ impl Plotter {
 mod test {
     use super::*;
     use plotbuilder::*;
+    use util::*;
 
     #[test]
     fn plot2d_test() {
 
-        let mut x = Vec::new();
-        for v in 0..10 {
-            x.push(v / 0.3);
-        }
+        let x = linspace(0, 10, 100);
+        let y = (&x).iter().map(|x| x.sin()).collect();
+        let xy = zip2(&x, &y);
 
-        let pb1 = PlotBuilder2D::simple_xy(vec![(0.75, 1.0), (10.0, 10.0)]);
-        let pb2 = PlotBuilder2D::simple_xy(vec![(0.3, 1.0), (25.0, 180.0)]);
+        let pb1 = PlotBuilder2D::simple_xy(xy);
+        // let pb2 = PlotBuilder2D::simple_xy(vec![(0.3, 1.0), (25.0, 180.0)]);
         let mut plt = Plotter::new();
         plt.plot2d(pb1);
-        plt.plot2d(pb2);
+        // plt.plot2d(pb2);
         plt.join();
     }
 }
