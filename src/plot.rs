@@ -2,6 +2,7 @@ use piston_window;
 use piston_window::*;
 use std::cmp::min;
 use plotbuilder::*;
+use std;
 // use sdl2_window::Sdl2Window;
 
 
@@ -62,6 +63,60 @@ fn draw_borders(bordercol: [f32; 4],
               g);
 }
 
+fn draw_xy(plotdata: PlotBuilder2D, xy: &Vec<(f64, f64)>, window: &mut PistonWindow) {
+
+    let bordercol = [0.95, 0.95, 0.95, 1.0];
+    let bgcol = [1.0, 1.0, 1.0, 1.0];
+    let margin = 0.05;
+    let invmargin = 1.0 - 2.0 * margin;
+
+    if xy.len() <= 1 {
+        return;
+    }
+
+    let mut xs: Vec<f64> = Vec::with_capacity(xy.len());
+    let mut ys: Vec<f64> = Vec::with_capacity(xy.len());
+
+    for &(x, y) in xy {
+        xs.push(x);
+        ys.push(y);
+    }
+
+    let x_max = get_max(plotdata.max_x, &xs);
+    let y_max = get_max(plotdata.max_y, &ys);
+
+    let x_min = get_min(plotdata.min_x, &xs);
+    let y_min = get_min(plotdata.min_y, &ys);
+
+
+    // Poll events from the window.
+    while let Some(event) = window.next() {
+        let w = window.size().width;
+        let h = window.size().height;
+
+        let m = min(w, h) as f64;
+        let space = m * margin;
+        let m = m * invmargin;
+
+        let xt: Vec<f64> = xs.iter().map(|x| point2plot(*x, x_min, x_max, m, space)).collect();
+        let yt: Vec<f64> = ys.iter()
+            .map(|y| (2.0 * space + m) - point2plot(*y, y_min, y_max, m, space))
+            .collect();
+
+        window.draw_2d(&event, |c, g| {
+
+            draw_borders(bordercol, bgcol, space, m, c.transform, g);
+
+            for i in 0..xy.len() - 1 {
+                let (xa, ya) = (xt[i + 0], yt[i + 0]);
+                let (xb, yb) = (xt[i + 1], yt[i + 1]);
+                line([0.0, 1.0, 0.0, 1.0], 1.0, [xa, ya, xb, yb], c.transform, g);
+
+            }
+        });
+    }
+}
+
 impl Plot {
     pub fn new2d(plotdata: PlotBuilder2D) {
         let mut window: PistonWindow = WindowSettings::new("2D plot", [720, 720])
@@ -70,6 +125,8 @@ impl Plot {
             .exit_on_esc(true)
             .build()
             .unwrap();
+
+        let mut plotdata = plotdata;
 
         // let mut ui = conrod::UiBuilder::new().build();
         // ui.fonts.insert_from_file(plotdata.font_path).unwrap();
@@ -80,61 +137,15 @@ impl Plot {
 
         window.set_ups(60);
 
+        let mut pvs = Vec::new();
 
-        let bordercol = [0.95, 0.95, 0.95, 1.0];
-        let bgcol = [1.0, 1.0, 1.0, 1.0];
-        let margin = 0.05;
-        let invmargin = 1.0 - 2.0 * margin;
+        std::mem::swap(&mut plotdata.pvs, &mut pvs);
 
-        if let PlotVals2D::Xy(ref xy) = plotdata.pvs[0] {
-
-            if xy.len() <= 1 {
-                return;
+        for pv in pvs.drain(..) {
+            match pv {
+                PlotVals2D::Xy(ref xy) => draw_xy(plotdata.clone(), xy, &mut window),
+                _ => (),
             }
-
-            let mut xs: Vec<f64> = Vec::with_capacity(xy.len());
-            let mut ys: Vec<f64> = Vec::with_capacity(xy.len());
-
-            for &(x, y) in xy {
-                xs.push(x);
-                ys.push(y);
-            }
-
-            let x_max = get_max(plotdata.max_x, &xs);
-            let y_max = get_max(plotdata.max_y, &ys);
-
-            let x_min = get_min(plotdata.min_x, &xs);
-            let y_min = get_min(plotdata.min_y, &ys);
-
-
-            // Poll events from the window.
-            while let Some(event) = window.next() {
-                let w = window.size().width;
-                let h = window.size().height;
-
-                let m = min(w, h) as f64;
-                let space = m * margin;
-                let m = m * invmargin;
-
-                let xt: Vec<f64> =
-                    xs.iter().map(|x| point2plot(*x, x_min, x_max, m, space)).collect();
-                let yt: Vec<f64> = ys.iter()
-                    .map(|y| (2.0 * space + m) - point2plot(*y, y_min, y_max, m, space))
-                    .collect();
-
-                window.draw_2d(&event, |c, g| {
-
-                    draw_borders(bordercol, bgcol, space, m, c.transform, g);
-
-                    for i in 0..xy.len() - 1 {
-                        let (xa, ya) = (xt[i + 0], yt[i + 0]);
-                        let (xb, yb) = (xt[i + 1], yt[i + 1]);
-                        line([0.0, 1.0, 0.0, 1.0], 1.0, [xa, ya, xb, yb], c.transform, g);
-
-                    }
-                });
-            }
-
         }
 
     }
