@@ -10,7 +10,7 @@
 //!
 //! fn main() {
 //!     let x = linspace(0, 10, 100);
-//!     let y = (&x).iter().map(|x| x.sin()).collect();
+//!     let y = x.iter().map(|x| x.sin()).collect();
 //!     let xy = zip2(&x, &y);
 //!
 //!     let pb = PlotBuilder2D::simple_xy(xy);
