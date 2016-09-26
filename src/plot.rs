@@ -67,7 +67,7 @@ fn draw_borders(bordercol: [f32; 4],
               g);
 }
 
-fn draw_xy(plotdata: PlotBuilder2D, xy: &Vec<(f64, f64)>, window: &mut PistonWindow) {
+fn draw_xy(plotdata: PlotBuilder2D, xy: &Vec<(f64, f64)>, color: &[f32; 4], window: &mut PistonWindow) {
 
     let bordercol = [0.95, 0.95, 0.95, 1.0];
     let bgcol = [1.0, 1.0, 1.0, 1.0];
@@ -114,7 +114,7 @@ fn draw_xy(plotdata: PlotBuilder2D, xy: &Vec<(f64, f64)>, window: &mut PistonWin
             for i in 0..xy.len() - 1 {
                 let (xa, ya) = (xt[i + 0], yt[i + 0]);
                 let (xb, yb) = (xt[i + 1], yt[i + 1]);
-                line([0.0, 1.0, 0.0, 1.0], 1.0, [xa, ya, xb, yb], c.transform, g);
+                line([color[0], color[1], color[2], color[3]], 1.0, [xa, ya, xb, yb], c.transform, g);
 
             }
         });
@@ -147,7 +147,8 @@ impl Plot {
 
         for pv in pvs.drain(..) {
             match pv {
-                PlotVals2D::Xy(ref xy) => draw_xy(plotdata.clone(), xy, &mut window),
+                PlotVals2D::Xy(ref xy) => draw_xy(plotdata.clone(), xy, &[0.0, 1.0, 0.0, 1.0], &mut window),
+                PlotVals2D::XyColor(ref col, ref xy) => draw_xy(plotdata.clone(), &xy, col, &mut window),
                 _ => (),
             }
         }

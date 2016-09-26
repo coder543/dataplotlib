@@ -8,8 +8,8 @@ fn main() {
     let y = x.iter().map(|x| x.sin()).collect();
     let xy = zip2(&x, &y);
 
-    // Makes a new graph with the points
-    let pb = PlotBuilder2D::simple_xy(xy);
+    // Makes a new graph of the color [1.0, 1.0, 0.0, 1.0] (yellow)
+    let pb = PlotBuilder2D::simple_xy_colored(xy, [1.0, 1.0, 0.0, 1.0]);
     let mut plt = Plotter::new();
     plt.plot2d(pb);
     plt.join();

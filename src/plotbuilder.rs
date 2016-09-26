@@ -16,7 +16,7 @@ pub enum PlotVals2D {
     Xy(Vec<(f64, f64)>),
 
     /// A simple x-y value line plot... now in a color of your choice!
-    XyColor([f32; 4], Vec<f64>, Vec<f64>),
+    XyColor([f32; 4], Vec<(f64, f64)>),
 
     /// A function that produces a y value for a given x value
     Fun(PlotFn),
@@ -90,6 +90,26 @@ impl PlotBuilder2D {
     pub fn simple_xy(xy: Vec<(f64, f64)>) -> PlotBuilder2D {
         PlotBuilder2D {
             pvs: vec![PlotVals2D::Xy(xy)],
+            min_x: None,
+            max_x: None,
+            min_y: None,
+            max_y: None,
+            x_label: None,
+            y_label: None,
+            title: None,
+            y_axis: true,
+            y_gridlines: true,
+            x_axis: true,
+            x_gridlines: true,
+            font_path: DEFAULT_FONT.to_string(),
+        }
+    }
+
+    /// A slight variation of `simply_xy` which gives the graph a color.
+    /// Once the struct is returned, it's easy enough to make adjustments.
+    pub fn simple_xy_colored(xy: Vec<(f64, f64)>, color: [f32; 4]) -> PlotBuilder2D {
+        PlotBuilder2D {
+            pvs: vec![PlotVals2D::XyColor(color, xy)],
             min_x: None,
             max_x: None,
             min_y: None,
