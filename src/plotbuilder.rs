@@ -9,7 +9,7 @@ pub type PlotFn = &'static (Fn(f64) -> f64 + Sync);
 pub type AnimFn = &'static (Fn(f64, f64) -> f64 + Sync);
 
 /// `PlotVals2D` provides all of the value data for an individual plot
-/// Note: Only `Xy()` does anything at the moment
+/// Note: Only `Xy()` and `XyColor()` do anything at the moment
 #[derive(Clone)]
 pub enum PlotVals2D {
     /// A simple x-y value line plot
