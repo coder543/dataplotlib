@@ -71,16 +71,20 @@ fn draw_borders(bordercol: [f32; 4],
 fn set_xy(xy: &Vec<(f64, f64)>, x_vector: &mut Vec<Vec<f64>>, y_vector: &mut Vec<Vec<f64>>) {
     x_vector.push(Vec::new());
     y_vector.push(Vec::new());
-    
+
     let last_index = x_vector.len() - 1;
-    
+
     for &(x, y) in xy {
         x_vector[last_index].push(x);
         y_vector[last_index].push(y);
     }
 }
 
-fn draw_plots (window: &mut PistonWindow, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, colors: &Vec<[f32; 4]>, globals: [f64; 4]) {
+fn draw_plots(window: &mut PistonWindow,
+              xs: &Vec<Vec<f64>>,
+              ys: &Vec<Vec<f64>>,
+              colors: &Vec<[f32; 4]>,
+              plot_bounds: [f64; 4]) {
     let bordercol = [0.95, 0.95, 0.95, 1.0];
     let bgcol = [1.0, 1.0, 1.0, 1.0];
     let margin = 0.05;
@@ -93,11 +97,11 @@ fn draw_plots (window: &mut PistonWindow, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>
     let space = m * margin;
     let m = m * invmargin;
 
-    let x_max = globals[0];
-    let y_max = globals[1];
-    let x_min = globals[2];
-    let y_min = globals[3];
-    
+    let x_max = plot_bounds[0];
+    let y_max = plot_bounds[1];
+    let x_min = plot_bounds[2];
+    let y_min = plot_bounds[3];
+
     // Poll events from the window.
     while let Some(event) = window.next() {
         window.draw_2d(&event, |c, g| {
@@ -106,45 +110,56 @@ fn draw_plots (window: &mut PistonWindow, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>
 
         for i in 0..colors.len() {
             let color = colors[i];
-            let xt: Vec<f64> = xs[i].iter().map(|x| point2plot(*x, x_min, x_max, m, space)).collect();
-            let yt: Vec<f64> = ys[i].iter()
+            let xt: Vec<f64> =
+                xs[i].iter().map(|x| point2plot(*x, x_min, x_max, m, space)).collect();
+            let yt: Vec<f64> = ys[i]
+                .iter()
                 .map(|y| (2.0 * space + m) - point2plot(*y, y_min, y_max, m, space))
                 .collect();
 
-            window.draw_2d(&event, |c, g| {                
+            window.draw_2d(&event, |c, g| {
                 // The number of points
                 let len = xs[i].len();
                 for i in 0..len - 1 {
                     let (xa, ya) = (xt[i + 0], yt[i + 0]);
                     let (xb, yb) = (xt[i + 1], yt[i + 1]);
-                    line([color[0], color[1], color[2], color[3]], 1.0, [xa, ya, xb, yb], c.transform, g);
+                    line([color[0], color[1], color[2], color[3]],
+                         1.0,
+                         [xa, ya, xb, yb],
+                         c.transform,
+                         g);
                 }
             });
         }
     }
 }
 
-fn set_globals(plot_builder: &PlotBuilder2D, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, globals: &mut [f64; 4]) {
-    
+fn get_plot_bounds(plot_builder: &PlotBuilder2D,
+                   xs: &Vec<Vec<f64>>,
+                   ys: &Vec<Vec<f64>>)
+                   -> [f64; 4] {
+
     let mut max_xs: Vec<f64> = Vec::new();
     let mut max_ys: Vec<f64> = Vec::new();
     let mut min_xs: Vec<f64> = Vec::new();
     let mut min_ys: Vec<f64> = Vec::new();
-    
+
     // Get the plot extremities
     for i in 0..xs.len() {
-        max_xs.push( get_max(plot_builder.max_x, &xs[i]) );
-        max_ys.push( get_max(plot_builder.max_y, &ys[i]) );
+        max_xs.push(get_max(plot_builder.max_x, &xs[i]));
+        max_ys.push(get_max(plot_builder.max_y, &ys[i]));
 
-        min_xs.push( get_min(plot_builder.min_x, &xs[i]) );
-        min_ys.push( get_min(plot_builder.min_y, &ys[i]) );
+        min_xs.push(get_min(plot_builder.min_x, &xs[i]));
+        min_ys.push(get_min(plot_builder.min_y, &ys[i]));
     }
-    
-    // Apply the plot extremities to the global extremities
-    globals[0] = max_xs.iter().cloned().fold(0./0., f64::max);
-    globals[1] = max_ys.iter().cloned().fold(0./0., f64::max);
-    globals[2] = min_xs.iter().cloned().fold(0./0., f64::min);
-    globals[3] = min_ys.iter().cloned().fold(0./0., f64::min);
+
+    let plot_bounds: [f64; 4] = [// Apply the plot extremities to the global extremities
+                                 max_xs.iter().cloned().fold(0. / 0., f64::max),
+                                 max_ys.iter().cloned().fold(0. / 0., f64::max),
+                                 min_xs.iter().cloned().fold(0. / 0., f64::min),
+                                 min_ys.iter().cloned().fold(0. / 0., f64::min)];
+
+    plot_bounds
 }
 
 impl Plot {
@@ -174,17 +189,19 @@ impl Plot {
         let mut colors: Vec<[f32; 4]> = Vec::new();
         let mut x_points: Vec<Vec<f64>> = Vec::new();
         let mut y_points: Vec<Vec<f64>> = Vec::new();
-        
+
         for pv in pvs.drain(..) {
             match pv {
-                PlotVals2D::XyColor(ref col, ref xy) => { set_xy(xy, &mut x_points, &mut y_points); colors.push(col.clone()); }
-                _ => ()
+                PlotVals2D::XyColor(ref col, ref xy) => {
+                    set_xy(xy, &mut x_points, &mut y_points);
+                    colors.push(col.clone());
+                }
+                _ => (),
             }
         }
 
         // [MAX_X, MAX_Y, MIN_X, MIN_Y]
-        let mut globals: [f64; 4] = [1.0, 1.0, 1.0, 1.0];
-        set_globals(&plot_builder, &x_points, &y_points, &mut globals);
-        draw_plots(&mut window, &x_points, &y_points, &colors, globals);
+        let plot_bounds: [f64; 4] = get_plot_bounds(&plot_builder, &x_points, &y_points);
+        draw_plots(&mut window, &x_points, &y_points, &colors, plot_bounds);
     }
 }

@@ -48,11 +48,10 @@ mod test {
         let y = (&x).iter().map(|x| x.sin()).collect();
         let xy = zip2(&x, &y);
 
-        let pb1 = PlotBuilder2D::simple_xy(xy);
-        // let pb2 = PlotBuilder2D::simple_xy(vec![(0.3, 1.0), (25.0, 180.0)]);
+        let mut pb1 = PlotBuilder2D::new();
+        pb1.add_simple_xy(xy);
         let mut plt = Plotter::new();
         plt.plot2d(pb1);
-        // plt.plot2d(pb2);
         plt.join();
     }
 }
