@@ -51,12 +51,7 @@ fn get_min(user_min: Option<f64>, values: &Vec<f64>) -> f64 {
     }
 }
 
-fn draw_borders(bordercol: [f32; 4],
-                bgcol: [f32; 4],
-                space: f64,
-                m: f64,
-                transform: [[f64; 3]; 2],
-                g: &mut piston_window::G2d) {
+fn draw_borders(bordercol: [f32; 4], bgcol: [f32; 4], space: f64, m: f64, transform: [[f64; 3]; 2], g: &mut piston_window::G2d) {
     clear(bordercol, g);
     rectangle([0.0, 0.0, 1.0, 1.0],
               [space - 2.0, space - 2.0, m + 4.0, m + 4.0], // rectangle
@@ -80,11 +75,7 @@ fn set_xy(xy: &Vec<(f64, f64)>, x_vector: &mut Vec<Vec<f64>>, y_vector: &mut Vec
     }
 }
 
-fn draw_plots(window: &mut PistonWindow,
-              xs: &Vec<Vec<f64>>,
-              ys: &Vec<Vec<f64>>,
-              colors: &Vec<[f32; 4]>,
-              plot_bounds: [f64; 4]) {
+fn draw_plots(window: &mut PistonWindow, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, colors: &Vec<[f32; 4]>, plot_bounds: [f64; 4]) {
     let bordercol = [0.95, 0.95, 0.95, 1.0];
     let bgcol = [1.0, 1.0, 1.0, 1.0];
     let margin = 0.05;
@@ -110,8 +101,7 @@ fn draw_plots(window: &mut PistonWindow,
 
         for i in 0..colors.len() {
             let color = colors[i];
-            let xt: Vec<f64> =
-                xs[i].iter().map(|x| point2plot(*x, x_min, x_max, m, space)).collect();
+            let xt: Vec<f64> = xs[i].iter().map(|x| point2plot(*x, x_min, x_max, m, space)).collect();
             let yt: Vec<f64> = ys[i]
                 .iter()
                 .map(|y| (2.0 * space + m) - point2plot(*y, y_min, y_max, m, space))
@@ -134,10 +124,7 @@ fn draw_plots(window: &mut PistonWindow,
     }
 }
 
-fn get_plot_bounds(plot_builder: &PlotBuilder2D,
-                   xs: &Vec<Vec<f64>>,
-                   ys: &Vec<Vec<f64>>)
-                   -> [f64; 4] {
+fn get_plot_bounds(plot_builder: &PlotBuilder2D, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>) -> [f64; 4] {
 
     let mut max_xs: Vec<f64> = Vec::new();
     let mut max_ys: Vec<f64> = Vec::new();
