@@ -97,8 +97,6 @@ fn draw_plots (window: &mut PistonWindow, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>
     let y_max = globals[1];
     let x_min = globals[2];
     let y_min = globals[3];
-
-    println!("{} {} {} {}", x_max, y_max, x_min, y_min);
     
     // Poll events from the window.
     while let Some(event) = window.next() {
