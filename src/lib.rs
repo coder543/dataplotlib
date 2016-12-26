@@ -30,8 +30,7 @@
 //! ```
 
 #[macro_use]
-extern crate piston_window;
-// extern crate sdl2_window;
+extern crate sdl2;
 
 mod plot;
 pub mod plotter;

@@ -2,13 +2,20 @@
 //!
 //! Users of **dataplotlib** should not need to access **plot**.
 
-use piston_window;
-use piston_window::*;
+use sdl2;
+
+use sdl2::event::Event;
+use sdl2::pixels;
+use sdl2::keyboard::Keycode;
+
+use sdl2::gfx::primitives::DrawRenderer;
+use sdl2::video::Window;
+
 use std::cmp::min;
+use std::time::Duration;
+use std::{mem, thread, f64};
+
 use plotbuilder::*;
-use std::f64;
-use std;
-// use sdl2_window::Sdl2Window;
 
 
 pub struct Plot {
@@ -19,8 +26,8 @@ pub struct Plot {
 // max: the farthest point to render on the line segment
 // length: the length of the 1 dimensional window space
 // space: the offset from the beginning of the line segment
-fn point2plot(pt: f64, min: f64, max: f64, length: f64, space: f64) -> f64 {
-    ((pt - min) / (max - min)) * length + space
+fn point2plot(pt: f64, min: f64, max: f64, length: f64, space: f64) -> i16 {
+    (((pt - min) / (max - min)) * (length - space) + space) as i16
 }
 
 fn get_max(user_max: Option<f64>, values: &Vec<f64>) -> f64 {
@@ -51,16 +58,30 @@ fn get_min(user_min: Option<f64>, values: &Vec<f64>) -> f64 {
     }
 }
 
-fn draw_borders(bordercol: [f32; 4], bgcol: [f32; 4], space: f64, m: f64, transform: [[f64; 3]; 2], g: &mut piston_window::G2d) {
-    clear(bordercol, g);
-    rectangle([0.0, 0.0, 1.0, 1.0],
-              [space - 2.0, space - 2.0, m + 4.0, m + 4.0], // rectangle
-              transform,
-              g);
-    rectangle(bgcol,
-              [space - 1.0, space - 1.0, m + 2.0, m + 2.0], // rectangle
-              transform,
-              g);
+fn f32_4_to_color(col: [f32; 4]) -> pixels::Color {
+    pixels::Color::RGBA((col[0] * 255f32) as u8,
+                        (col[1] * 255f32) as u8,
+                        (col[2] * 255f32) as u8,
+                        (col[3] * 255f32) as u8)
+}
+
+fn draw_borders(bordercol: pixels::Color, bgcol: pixels::Color, space: f64, m: f64, renderer: &mut sdl2::render::Renderer) {
+    renderer.set_draw_color(bordercol);
+    renderer.clear();
+
+    renderer.rectangle((space - 1.0) as i16,
+                   (space - 1.0) as i16,
+                   (m - 1.0) as i16,
+                   (m - 1.0) as i16,
+                   pixels::Color::RGBA(0, 0, 255, 255))
+        .unwrap();
+
+    renderer.rectangle((space + 1.0) as i16,
+                   (space + 1.0) as i16,
+                   (m + 1.0) as i16,
+                   (m + 1.0) as i16,
+                   bgcol)
+        .unwrap();
 }
 
 fn set_xy(xy: &Vec<(f64, f64)>, x_vector: &mut Vec<Vec<f64>>, y_vector: &mut Vec<Vec<f64>>) {
@@ -75,52 +96,85 @@ fn set_xy(xy: &Vec<(f64, f64)>, x_vector: &mut Vec<Vec<f64>>, y_vector: &mut Vec
     }
 }
 
-fn draw_plots(window: &mut PistonWindow, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, colors: &Vec<[f32; 4]>, plot_bounds: [f64; 4]) {
-    let bordercol = [0.95, 0.95, 0.95, 1.0];
-    let bgcol = [1.0, 1.0, 1.0, 1.0];
+fn draw_plots(sdl_context: sdl2::Sdl, window: Window, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, colors: &Vec<[f32; 4]>, plot_bounds: [f64; 4]) {
+    let bordercol = f32_4_to_color([0.95, 0.95, 0.95, 1.0]);
+    let bgcol = f32_4_to_color([1.0, 1.0, 1.0, 1.0]);
     let margin = 0.05;
-    let invmargin = 1.0 - 2.0 * margin;
-
-    let w = window.size().width;
-    let h = window.size().height;
-
-    let m = min(w, h) as f64;
-    let space = m * margin;
-    let m = m * invmargin;
+    let invmargin = 1.0 - margin;
 
     let x_max = plot_bounds[0];
     let y_max = plot_bounds[1];
     let x_min = plot_bounds[2];
     let y_min = plot_bounds[3];
 
-    // Poll events from the window.
-    while let Some(event) = window.next() {
-        window.draw_2d(&event, |c, g| {
-            draw_borders(bordercol, bgcol, space, m, c.transform, g);
-        });
+    let mut renderer = window.renderer().build().unwrap();
+    let (mut w, mut h) = renderer.output_size().unwrap();
+
+    let mut events = sdl_context.event_pump().unwrap();
+
+    let mut update_frame = |w, h| {
+        // println!("(w, h) = ({}, {})", w, h);
+        let m = min(w, h) as f64;
+        let space = m * margin;
+        let m = m * invmargin;
+
+        renderer.set_draw_color(bgcol);
+        renderer.clear();
+        draw_borders(bordercol, bgcol, space, m, &mut renderer);
+
+        let y0 = (m + space) as i16 - point2plot(0.0, y_min, y_max, m, space);
+        let xn = m;
+        println!("xn: {}", xn);
+        renderer.thick_line(space as i16,
+                        y0,
+                        xn as i16,
+                        y0,
+                        2,
+                        pixels::Color::RGBA(0, 0, 0, 255))
+            .unwrap();
 
         for i in 0..colors.len() {
             let color = colors[i];
-            let xt: Vec<f64> = xs[i].iter().map(|x| point2plot(*x, x_min, x_max, m, space)).collect();
-            let yt: Vec<f64> = ys[i]
-                .iter()
-                .map(|y| (2.0 * space + m) - point2plot(*y, y_min, y_max, m, space))
-                .collect();
+            let color_rgba = f32_4_to_color(color);
 
-            window.draw_2d(&event, |c, g| {
-                // The number of points
-                let len = xs[i].len();
-                for i in 0..len - 1 {
-                    let (xa, ya) = (xt[i + 0], yt[i + 0]);
-                    let (xb, yb) = (xt[i + 1], yt[i + 1]);
-                    line([color[0], color[1], color[2], color[3]],
-                         1.0,
-                         [xa, ya, xb, yb],
-                         c.transform,
-                         g);
-                }
-            });
+            let y_inv = (m + space) as i16;
+            let yt: Vec<i16> = ys[i].iter().map(|y| y_inv - point2plot(*y, y_min, y_max, m, space)).collect();
+            let xt: Vec<i16> = xs[i].iter().map(|x| point2plot(*x, x_min, x_max, m, space)).collect();
+
+            // The number of points
+            let len = xs[i].len();
+            for i in 0..len - 1 {
+                let (xa, ya) = (xt[i + 0], yt[i + 0]);
+                let (xb, yb) = (xt[i + 1], yt[i + 1]);
+                renderer.thick_line(xa, ya, xb, yb, 2, color_rgba).unwrap();
+            }
         }
+        renderer.present();
+    };
+
+    update_frame(w, h);
+
+    'main: loop {
+        for event in events.poll_iter() {
+            match event {
+                Event::Quit { .. } => break 'main,
+
+                Event::KeyDown { keycode: Some(keycode), .. } => {
+                    if keycode == Keycode::Escape {
+                        break 'main;
+                    }
+                }
+                Event::Window { win_event: sdl2::event::WindowEvent::Resized(new_w, new_h), .. } => {
+                    w = new_w as u32;
+                    h = new_h as u32;
+                    update_frame(w, h);
+                }
+                _ => {}
+            }
+        }
+
+        thread::sleep(Duration::from_millis(30));
+
     }
 }
 
@@ -145,33 +199,29 @@ fn get_plot_bounds(plot_builder: &PlotBuilder2D, xs: &Vec<Vec<f64>>, ys: &Vec<Ve
                                  max_ys.iter().cloned().fold(0. / 0., f64::max),
                                  min_xs.iter().cloned().fold(0. / 0., f64::min),
                                  min_ys.iter().cloned().fold(0. / 0., f64::min)];
-
+    println!("bounds: {:?}", plot_bounds);
     plot_bounds
 }
 
 impl Plot {
     pub fn new2d(plot_builder: PlotBuilder2D) {
-        let mut window: PistonWindow = WindowSettings::new("2D plot", [720, 720])
-            .opengl(piston_window::OpenGL::V3_2)
-            .samples(4)
-            .exit_on_esc(true)
+
+        let sdl_context = sdl2::init().unwrap();
+        let video_subsys = sdl_context.video().unwrap();
+        let window = video_subsys.window("2D plot", 720, 720)
+            .position_centered()
+            .resizable()
+            .opengl()
             .build()
             .unwrap();
 
         let mut plot_builder = plot_builder;
 
-        // let mut ui = conrod::UiBuilder::new().build();
-        // ui.fonts.insert_from_file(plot_builder.font_path).unwrap();
-
-        // // Create a texture to use for efficiently caching text on the GPU.
-        // let text_texture_cache =
-        //     conrod::backend::piston_window::GlyphCache::new(&mut window, 720, 720);
-
-        window.set_ups(60);
+        // window.set_ups(60);
 
         let mut pvs = Vec::new();
 
-        std::mem::swap(&mut plot_builder.pvs, &mut pvs);
+        mem::swap(&mut plot_builder.pvs, &mut pvs);
 
         let mut colors: Vec<[f32; 4]> = Vec::new();
         let mut x_points: Vec<Vec<f64>> = Vec::new();
@@ -189,6 +239,11 @@ impl Plot {
 
         // [MAX_X, MAX_Y, MIN_X, MIN_Y]
         let plot_bounds: [f64; 4] = get_plot_bounds(&plot_builder, &x_points, &y_points);
-        draw_plots(&mut window, &x_points, &y_points, &colors, plot_bounds);
+        draw_plots(sdl_context,
+                   window,
+                   &x_points,
+                   &y_points,
+                   &colors,
+                   plot_bounds);
     }
 }

@@ -1,15 +1,18 @@
 [package]
 authors = ["Josh Leverette <coder543@gmail.com>"]
-name = "dataplotlib"
-version = "0.1.3"
-license = "MIT"
-keywords = ["plotting", "graphing", "matplotlib", "scientific"]
 description = "dataplotlib is a(n early stage) hassle-free library for plotting data"
 documentation = "https://docs.rs/dataplotlib/"
+keywords = ["plotting", "graphing", "matplotlib", "scientific"]
+license = "MIT"
+name = "dataplotlib"
+version = "0.1.3"
+
+[dependencies]
+
+[dependencies.sdl2]
+features = ["gfx", "image"]
+version = "0.27.2"
 
 [lib]
 name = "dataplotlib"
 path = "./src/lib.rs"
-
-[dependencies]
-piston_window = "0.52.0"
