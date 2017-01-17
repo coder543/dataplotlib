@@ -41,5 +41,5 @@ pub trait Drawable {
     fn get_events(&mut self) -> Vec<Event>;
 
     /// Asks that the Drawable stop any tasks and cleanup
-    fn close(&mut self);
+    fn close(&mut self) {} // provide empty default impl
 }

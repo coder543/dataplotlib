@@ -101,9 +101,4 @@ impl Drawable for DrawSDL {
 
         return events;
     }
-
-    /// Asks that the Drawable stop any tasks and cleanup
-    fn close(&mut self) {
-        // placeholder, not needed for Sdl2 backend
-    }
 }
