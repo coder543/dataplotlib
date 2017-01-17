@@ -32,6 +32,8 @@
 #[macro_use]
 extern crate sdl2;
 
+mod draw;
+mod draw_sdl;
 mod plot;
 pub mod plotter;
 pub mod plotbuilder;
