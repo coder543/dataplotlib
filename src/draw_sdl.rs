@@ -51,10 +51,12 @@ impl Drawable for DrawSDL {
     /// Sets the visible range of worldspace
     fn set_view(&mut self, x: Range, y: Range) {}
 
+    /// Set color for various drawing actions
     fn set_color(&mut self, color: [u8; 4]) {
         self.color = pixels::Color::RGBA(color[0], color[1], color[2], color[3]);
     }
 
+    /// Clears the output surface
     fn clear(&mut self) {
         self.renderer.set_draw_color(self.color);
         self.renderer.clear();

@@ -29,6 +29,7 @@ pub trait Drawable {
     /// Set color for various drawing actions
     fn set_color(&mut self, color: [u8; 4]);
 
+    /// Clears the output surface
     fn clear(&mut self);
 
     /// Draws a line from (x, y) -> (x, y) in worldspace
