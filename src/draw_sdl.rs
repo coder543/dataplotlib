@@ -92,7 +92,7 @@ impl Drawable for DrawSDL {
                 SdlEvent::Quit { .. } => return vec![Event::Quit],
 
                 SdlEvent::KeyDown { keycode: Some(keycode), .. } => {
-                    events.push(Event::Keydown(keycode as i32));
+                    events.push(Event::KeyDown(keycode as i32));
                 }
                 SdlEvent::Window { win_event: sdl2::event::WindowEvent::Resized(new_w, new_h), .. } => {
                     events.push(Event::Resize(new_w as f64, new_h as f64));

@@ -9,8 +9,8 @@ pub enum MouseButton {
 pub enum Event {
     Quit,
     Resize(f64, f64),
-    Keydown(i32),
-    Keyup(i32),
+    KeyDown(i32),
+    KeyUp(i32),
     MouseDown(Option<MouseButton>, f64, f64),
     MouseUp(Option<MouseButton>, f64, f64),
     MouseMove(Option<MouseButton>, f64, f64),
