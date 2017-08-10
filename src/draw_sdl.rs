@@ -11,7 +11,6 @@ use sdl2::gfx::primitives::DrawRenderer;
 use draw::*;
 
 pub struct DrawSDL {
-    context: Sdl,
     events: EventPump,
     renderer: Renderer<'static>,
     screenspace: (Range, Range),
@@ -38,7 +37,6 @@ impl DrawSDL {
         };
 
         DrawSDL {
-            context: sdl_context,
             events: events,
             renderer: renderer,
             screenspace: (default, default),
@@ -49,7 +47,14 @@ impl DrawSDL {
 
 impl Drawable for DrawSDL {
     /// Sets the visible range of worldspace
-    fn set_view(&mut self, x: Range, y: Range) {}
+    fn set_view(&mut self, x: Range, y: Range) {
+        self.screenspace = (x, y);
+    }
+
+    /// Gets the visible range of worldspace
+    fn get_view(&self) -> (Range, Range) {
+        self.screenspace
+    }
 
     /// Set color for various drawing actions
     fn set_color(&mut self, color: [u8; 4]) {
@@ -69,6 +74,16 @@ impl Drawable for DrawSDL {
 
         self.renderer
             .thick_line(x1 as i16, y1 as i16, x2 as i16, y2 as i16, 2, self.color)
+            .unwrap();
+    }
+
+    /// Draws a line from (x, y) -> (x, y) in worldspace
+    fn thick_line(&mut self, (x1, y1): (f64, f64), (x2, y2): (f64, f64), thickness: u16) {
+
+        // need to use point2plot!
+
+        self.renderer
+            .thick_line(x1 as i16, y1 as i16, x2 as i16, y2 as i16, thickness, self.color)
             .unwrap();
     }
 

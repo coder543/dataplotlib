@@ -29,11 +29,17 @@
 //! }
 //! ```
 
-#[macro_use]
+#[cfg(feature = "use-sdl2")]
 extern crate sdl2;
+#[cfg(feature = "use-sdl2")]
+#[macro_use]
+extern crate lazy_static;
+#[cfg(feature = "use-sdl2")]
+mod draw_sdl;
+
+extern crate image;
 
 mod draw;
-mod draw_sdl;
 mod plot;
 pub mod plotter;
 pub mod plotbuilder;

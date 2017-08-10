@@ -2,21 +2,13 @@
 //!
 //! Users of **dataplotlib** should not need to access **plot**.
 
-use sdl2;
-
-use sdl2::event::Event;
-use sdl2::pixels;
-use sdl2::keyboard::Keycode;
-
-use sdl2::gfx::primitives::DrawRenderer;
-use sdl2::video::Window;
-
 use std::cmp::min;
 use std::time::Duration;
 use std::{mem, thread, f64};
 
 use plotbuilder::*;
 
+use draw::{Drawable, Event};
 
 pub struct Plot {
 }
@@ -58,30 +50,22 @@ fn get_min(user_min: Option<f64>, values: &Vec<f64>) -> f64 {
     }
 }
 
-fn f32_4_to_color(col: [f32; 4]) -> pixels::Color {
-    pixels::Color::RGBA((col[0] * 255f32) as u8,
-                        (col[1] * 255f32) as u8,
-                        (col[2] * 255f32) as u8,
-                        (col[3] * 255f32) as u8)
+fn f32_4_to_color(col: [f32; 4]) -> [u8; 4] {
+    [(col[0] * 255f32) as u8,
+     (col[2] * 255f32) as u8,
+     (col[1] * 255f32) as u8,
+     (col[3] * 255f32) as u8]
 }
 
-fn draw_borders(bordercol: pixels::Color, bgcol: pixels::Color, space: f64, m: f64, renderer: &mut sdl2::render::Renderer) {
-    renderer.set_draw_color(bordercol);
+fn draw_borders(bordercol: [u8; 4], bgcol: [u8; 4], space: f64, m: f64, renderer: &mut Drawable) {
+    renderer.set_color(bordercol);
     renderer.clear();
 
-    renderer.rectangle((space - 1.0) as i16,
-                   (space - 1.0) as i16,
-                   (m - 1.0) as i16,
-                   (m - 1.0) as i16,
-                   pixels::Color::RGBA(0, 0, 255, 255))
-        .unwrap();
+    renderer.set_color([0, 0, 255, 255]);
+    renderer.rectangle((space - 1.0, space - 1.0), (m - 1.0, m - 1.0));
 
-    renderer.rectangle((space + 1.0) as i16,
-                   (space + 1.0) as i16,
-                   (m + 1.0) as i16,
-                   (m + 1.0) as i16,
-                   bgcol)
-        .unwrap();
+    renderer.set_color(bgcol);
+    renderer.rectangle((space + 1.0, space + 1.0), (m + 1.0, m + 1.0));
 }
 
 fn set_xy(xy: &Vec<(f64, f64)>, x_vector: &mut Vec<Vec<f64>>, y_vector: &mut Vec<Vec<f64>>) {
@@ -96,7 +80,7 @@ fn set_xy(xy: &Vec<(f64, f64)>, x_vector: &mut Vec<Vec<f64>>, y_vector: &mut Vec
     }
 }
 
-fn draw_plots(sdl_context: sdl2::Sdl, window: Window, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, colors: &Vec<[f32; 4]>, plot_bounds: [f64; 4]) {
+fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, colors: &Vec<[f32; 4]>, plot_bounds: [f64; 4]) {
     let bordercol = f32_4_to_color([0.95, 0.95, 0.95, 1.0]);
     let bgcol = f32_4_to_color([1.0, 1.0, 1.0, 1.0]);
     let margin = 0.05;
@@ -107,31 +91,21 @@ fn draw_plots(sdl_context: sdl2::Sdl, window: Window, xs: &Vec<Vec<f64>>, ys: &V
     let x_min = plot_bounds[2];
     let y_min = plot_bounds[3];
 
-    let mut renderer = window.renderer().build().unwrap();
     let (mut w, mut h) = renderer.output_size().unwrap();
-
-    let mut events = sdl_context.event_pump().unwrap();
 
     let mut update_frame = |w, h| {
         // println!("(w, h) = ({}, {})", w, h);
         let m = min(w, h) as f64;
         let space = m * margin;
         let m = m * invmargin;
-
-        renderer.set_draw_color(bgcol);
-        renderer.clear();
-        draw_borders(bordercol, bgcol, space, m, &mut renderer);
+        
+        draw_borders(bordercol, bgcol, space, m, renderer);
 
         let y0 = (m + space) as i16 - point2plot(0.0, y_min, y_max, m, space);
         let xn = m;
         println!("xn: {}", xn);
-        renderer.thick_line(space as i16,
-                        y0,
-                        xn as i16,
-                        y0,
-                        2,
-                        pixels::Color::RGBA(0, 0, 0, 255))
-            .unwrap();
+        renderer.set_color([0, 0, 0, 255]);
+        renderer.thick_line((space, y0), (xn, y0), 2);
 
         for i in 0..colors.len() {
             let color = colors[i];
@@ -155,16 +129,16 @@ fn draw_plots(sdl_context: sdl2::Sdl, window: Window, xs: &Vec<Vec<f64>>, ys: &V
     update_frame(w, h);
 
     'main: loop {
-        for event in events.poll_iter() {
+        for event in renderer.get_events() {
             match event {
                 Event::Quit { .. } => break 'main,
 
-                Event::KeyDown { keycode: Some(keycode), .. } => {
-                    if keycode == Keycode::Escape {
+                Event::KeyDown(keycode) => {
+                    if keycode == 1 { //Keycode::Escape {
                         break 'main;
                     }
                 }
-                Event::Window { win_event: sdl2::event::WindowEvent::Resized(new_w, new_h), .. } => {
+                Event::Resize(new_w, new_h) => {
                     w = new_w as u32;
                     h = new_h as u32;
                     update_frame(w, h);
@@ -174,7 +148,6 @@ fn draw_plots(sdl_context: sdl2::Sdl, window: Window, xs: &Vec<Vec<f64>>, ys: &V
         }
 
         thread::sleep(Duration::from_millis(30));
-
     }
 }
 
@@ -204,21 +177,7 @@ fn get_plot_bounds(plot_builder: &PlotBuilder2D, xs: &Vec<Vec<f64>>, ys: &Vec<Ve
 }
 
 impl Plot {
-    pub fn new2d(plot_builder: PlotBuilder2D) {
-
-        let sdl_context = sdl2::init().unwrap();
-        let video_subsys = sdl_context.video().unwrap();
-        let window = video_subsys.window("2D plot", 720, 720)
-            .position_centered()
-            .resizable()
-            .opengl()
-            .build()
-            .unwrap();
-
-        let mut plot_builder = plot_builder;
-
-        // window.set_ups(60);
-
+    pub fn new2d(mut plot_builder: PlotBuilder2D, renderer: &mut Drawable) {
         let mut pvs = Vec::new();
 
         mem::swap(&mut plot_builder.pvs, &mut pvs);
@@ -239,8 +198,7 @@ impl Plot {
 
         // [MAX_X, MAX_Y, MIN_X, MIN_Y]
         let plot_bounds: [f64; 4] = get_plot_bounds(&plot_builder, &x_points, &y_points);
-        draw_plots(sdl_context,
-                   window,
+        draw_plots(renderer,
                    &x_points,
                    &y_points,
                    &colors,
