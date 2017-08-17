@@ -9,6 +9,7 @@
 use std::thread;
 use plotbuilder::PlotBuilder2D;
 use plot::Plot;
+use draw;
 
 pub struct Plotter {
     plots: Vec<thread::JoinHandle<()>>,
@@ -21,10 +22,10 @@ impl Plotter {
     }
 
     /// `plot2d` is currently the only supported plotting function. It takes a `PlotBuilder2D` containing all needed information.
-    pub fn plot2d(&mut self, plotbuilder: PlotBuilder2D) {
-        self.plots.push(thread::spawn(move || {
-            Plot::new2d(plotbuilder);
-        }));
+    pub fn plot2d(&mut self, plotbuilder: PlotBuilder2D, drawable: Box<draw::Drawable>) {
+        self.plots.push(thread::spawn(
+            move || { Plot::new2d(plotbuilder, drawable); },
+        ));
     }
 
     /// The `join` function allows the thread that owns the `Plotter` to wait until the user has closed all open plot windows before continuing.

@@ -22,7 +22,7 @@ pub struct Range {
     pub max: f64,
 }
 
-pub trait Drawable {
+pub trait Drawable: Send {
     /// Sets the visible range of worldspace
     fn set_view(&mut self, x: Range, y: Range);
 

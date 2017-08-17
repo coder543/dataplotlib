@@ -10,8 +10,7 @@ use plotbuilder::*;
 
 use draw::{Drawable, Event};
 
-pub struct Plot {
-}
+pub struct Plot {}
 
 // pt: a point on a 1 dimensional line segment
 // min: the closest point to render on the line segment
@@ -51,10 +50,12 @@ fn get_min(user_min: Option<f64>, values: &Vec<f64>) -> f64 {
 }
 
 fn f32_4_to_color(col: [f32; 4]) -> [u8; 4] {
-    [(col[0] * 255f32) as u8,
-     (col[2] * 255f32) as u8,
-     (col[1] * 255f32) as u8,
-     (col[3] * 255f32) as u8]
+    [
+        (col[0] * 255f32) as u8,
+        (col[2] * 255f32) as u8,
+        (col[1] * 255f32) as u8,
+        (col[3] * 255f32) as u8,
+    ]
 }
 
 fn draw_borders(bordercol: [u8; 4], bgcol: [u8; 4], space: f64, m: f64, renderer: &mut Drawable) {
@@ -91,42 +92,41 @@ fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, c
     let x_min = plot_bounds[2];
     let y_min = plot_bounds[3];
 
-    let (mut w, mut h) = renderer.output_size().unwrap();
+    let (mut w, mut h) = renderer.get_view();
 
-    let mut update_frame = |w, h| {
+    use draw::Range;
+
+    let mut update_frame = |w: Range, h: Range, renderer| {
         // println!("(w, h) = ({}, {})", w, h);
-        let m = min(w, h) as f64;
+        let width = w.max - w.min;
+        let height = h.max - h.min;
+        let m = if width < height { width } else { height };
         let space = m * margin;
         let m = m * invmargin;
-        
-        draw_borders(bordercol, bgcol, space, m, renderer);
 
-        let y0 = (m + space) as i16 - point2plot(0.0, y_min, y_max, m, space);
-        let xn = m;
-        println!("xn: {}", xn);
-        renderer.set_color([0, 0, 0, 255]);
-        renderer.thick_line((space, y0), (xn, y0), 2);
+        draw_borders(bordercol, bgcol, space, m, &mut renderer);
 
         for i in 0..colors.len() {
             let color = colors[i];
             let color_rgba = f32_4_to_color(color);
 
             let y_inv = (m + space) as i16;
-            let yt: Vec<i16> = ys[i].iter().map(|y| y_inv - point2plot(*y, y_min, y_max, m, space)).collect();
-            let xt: Vec<i16> = xs[i].iter().map(|x| point2plot(*x, x_min, x_max, m, space)).collect();
+            let yt = &ys[i];
+            let xt = &xs[i];
 
             // The number of points
             let len = xs[i].len();
-            for i in 0..len - 1 {
-                let (xa, ya) = (xt[i + 0], yt[i + 0]);
-                let (xb, yb) = (xt[i + 1], yt[i + 1]);
-                renderer.thick_line(xa, ya, xb, yb, 2, color_rgba).unwrap();
+            for j in 0..len - 1 {
+                let (xa, ya) = (xt[j + 0], yt[j + 0]);
+                let (xb, yb) = (xt[j + 1], yt[j + 1]);
+                renderer.set_color(color_rgba);
+                renderer.thick_line((xa, ya), (xb, yb), 2);
             }
         }
-        renderer.present();
     };
 
-    update_frame(w, h);
+
+    update_frame(w, h, renderer);
 
     'main: loop {
         for event in renderer.get_events() {
@@ -134,14 +134,16 @@ fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, c
                 Event::Quit { .. } => break 'main,
 
                 Event::KeyDown(keycode) => {
-                    if keycode == 1 { //Keycode::Escape {
+                    if keycode == 1 {
+                        //Keycode::Escape {
                         break 'main;
                     }
                 }
-                Event::Resize(new_w, new_h) => {
-                    w = new_w as u32;
-                    h = new_h as u32;
-                    update_frame(w, h);
+                Event::Resize(_, _) => {
+                    let view = renderer.get_view();
+                    w = view.0;
+                    h = view.1;
+                    update_frame(w, h, renderer);
                 }
                 _ => {}
             }
@@ -167,17 +169,19 @@ fn get_plot_bounds(plot_builder: &PlotBuilder2D, xs: &Vec<Vec<f64>>, ys: &Vec<Ve
         min_ys.push(get_min(plot_builder.min_y, &ys[i]));
     }
 
-    let plot_bounds: [f64; 4] = [// Apply the plot extremities to the global extremities
-                                 max_xs.iter().cloned().fold(0. / 0., f64::max),
-                                 max_ys.iter().cloned().fold(0. / 0., f64::max),
-                                 min_xs.iter().cloned().fold(0. / 0., f64::min),
-                                 min_ys.iter().cloned().fold(0. / 0., f64::min)];
+    let plot_bounds: [f64; 4] = [
+        // Apply the plot extremities to the global extremities
+        max_xs.iter().cloned().fold(0. / 0., f64::max),
+        max_ys.iter().cloned().fold(0. / 0., f64::max),
+        min_xs.iter().cloned().fold(0. / 0., f64::min),
+        min_ys.iter().cloned().fold(0. / 0., f64::min),
+    ];
     println!("bounds: {:?}", plot_bounds);
     plot_bounds
 }
 
 impl Plot {
-    pub fn new2d(mut plot_builder: PlotBuilder2D, renderer: &mut Drawable) {
+    pub fn new2d(mut plot_builder: PlotBuilder2D, mut renderer: Box<Drawable>) {
         let mut pvs = Vec::new();
 
         mem::swap(&mut plot_builder.pvs, &mut pvs);
@@ -198,10 +202,6 @@ impl Plot {
 
         // [MAX_X, MAX_Y, MIN_X, MIN_Y]
         let plot_bounds: [f64; 4] = get_plot_bounds(&plot_builder, &x_points, &y_points);
-        draw_plots(renderer,
-                   &x_points,
-                   &y_points,
-                   &colors,
-                   plot_bounds);
+        draw_plots(&mut *renderer, &x_points, &y_points, &colors, plot_bounds);
     }
 }
