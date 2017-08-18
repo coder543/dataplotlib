@@ -32,11 +32,13 @@
 #[cfg(feature = "use-sdl2")]
 extern crate sdl2_mt;
 #[cfg(feature = "use-sdl2")]
-mod draw_sdl;
+pub use sdl2_mt::init as sdl2_init;
+#[cfg(feature = "use-sdl2")]
+pub mod draw_sdl;
 
 extern crate image;
 
-mod draw;
+pub mod draw;
 mod plot;
 pub mod plotter;
 pub mod plotbuilder;

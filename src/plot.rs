@@ -96,7 +96,7 @@ fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, c
 
     use draw::Range;
 
-    let mut update_frame = |w: Range, h: Range, renderer| {
+    let update_frame = |w: Range, h: Range, renderer: &mut Drawable| {
         // println!("(w, h) = ({}, {})", w, h);
         let width = w.max - w.min;
         let height = h.max - h.min;
@@ -104,7 +104,7 @@ fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, c
         let space = m * margin;
         let m = m * invmargin;
 
-        draw_borders(bordercol, bgcol, space, m, &mut renderer);
+        draw_borders(bordercol, bgcol, space, m, renderer);
 
         for i in 0..colors.len() {
             let color = colors[i];
