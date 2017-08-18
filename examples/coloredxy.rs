@@ -20,9 +20,9 @@ fn main() {
     pb.add_color_xy(xy_lin, [0.0, 0.0, 1.0, 1.0]);
 
     let sdlh = dataplotlib::sdl2_init();
-    let sdl2 = DrawSDL::new(sdlh);
+    let sdl2_window = DrawSDL::new(sdlh);
 
     let mut plt = Plotter::new();
-    plt.plot2d(pb, Box::new(sdl2));
+    plt.plot2d(pb, sdl2_window);
     plt.join();
 }

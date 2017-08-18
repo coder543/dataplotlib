@@ -17,17 +17,17 @@ pub struct DrawSDL {
 }
 
 impl DrawSDL {
-    pub fn new(sdlh: Sdl2Mt) -> DrawSDL {
+    pub fn new(sdlh: Sdl2Mt) -> Box<DrawSDL> {
         let window_id = sdlh.create_simple_window("2D plot", 720, 720).unwrap();
 
         let default = Range { min: 0.0, max: 0.0 };
 
-        DrawSDL {
+        Box::new(DrawSDL {
             sdlh,
             window_id,
             screenspace: (default, default),
             color: pixels::Color::RGBA(0, 0, 0, 255),
-        }
+        })
     }
 }
 
