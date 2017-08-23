@@ -28,11 +28,29 @@ impl Plotter {
         ));
     }
 
+    /// The `disown` function allows the thread that owns the `Plotter` to keep going without either `join`ing manually or letting the `Drop` trait force a `join`.
+    pub fn disown(self) {
+        ::std::mem::forget(self);
+    }
+
     /// The `join` function allows the thread that owns the `Plotter` to wait until the user has closed all open plot windows before continuing.
-    pub fn join(self) {
-        for t in self.plots {
+    pub fn join(mut self) {
+        self._join();
+    }
+
+    /// The internal version of `join` that only really takes a mutable reference to allow `join`ing during `Drop`.
+    fn _join(&mut self) {
+        let mut plots = vec![];
+        ::std::mem::swap(&mut self.plots, &mut plots);
+        for t in plots {
             let _ = t.join();
         }
+    }
+}
+
+impl Drop for Plotter {
+    fn drop(&mut self) {
+        self._join();
     }
 }
 

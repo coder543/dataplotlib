@@ -24,5 +24,4 @@ fn main() {
 
     let mut plt = Plotter::new();
     plt.plot2d(pb, sdl2_window);
-    plt.join();
 }
