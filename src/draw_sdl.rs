@@ -63,7 +63,6 @@ impl Drawable for DrawSDL {
                 let canvas = windows.get_mut(&window_id).unwrap();
                 canvas.set_draw_color(color);
                 canvas.clear();
-                canvas.present();
             }))
             .unwrap();
     }
@@ -91,7 +90,6 @@ impl Drawable for DrawSDL {
                 canvas
                     .draw_line((x1 as i32, y1 as i32), (x2 as i32, y2 as i32))
                     .unwrap();
-                canvas.present();
             }))
             .unwrap();
     }
@@ -119,7 +117,6 @@ impl Drawable for DrawSDL {
                 let canvas = windows.get_mut(&window_id).unwrap();
                 canvas.set_draw_color(color);
                 canvas.fill_rect(Rect::new(x1, y1, w, h)).unwrap();
-                canvas.present();
             }))
             .unwrap();
     }
@@ -147,7 +144,6 @@ impl Drawable for DrawSDL {
                 let canvas = windows.get_mut(&window_id).unwrap();
                 canvas.set_draw_color(color);
                 canvas.draw_rect(Rect::new(x1, y1, w, h)).unwrap();
-                canvas.present();
             }))
             .unwrap();
     }
