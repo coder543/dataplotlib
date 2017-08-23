@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
+#[derive(Copy, Clone, Debug)]
 pub enum MouseButton {
     Left,
     Middle,
     Right,
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum Event {
     Quit,
     Resize(f64, f64),
@@ -14,12 +16,19 @@ pub enum Event {
     MouseDown(MouseButton, f64, f64),
     MouseUp(MouseButton, f64, f64),
     MouseMove(MouseButton, f64, f64),
+    MouseScroll(i32, i32),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Range {
     pub min: f64,
     pub max: f64,
+}
+
+impl Range {
+    pub fn size(&self) -> f64 {
+        self.max - self.min
+    }
 }
 
 pub trait Drawable: Send {
@@ -44,9 +53,27 @@ pub trait Drawable: Send {
     /// Draws a rectangle bounded by two corners
     fn rectangle(&mut self, a: (f64, f64), b: (f64, f64));
 
+    /// Draws a rectangle bounded by two corners
+    fn unfilled_rectangle(&mut self, a: (f64, f64), b: (f64, f64));
+
     /// Returns the next pending events
     fn get_events(&mut self) -> Vec<Event>;
 
     /// Asks that the Drawable stop any tasks and cleanup
     fn close(&mut self) {} // provide empty default impl
+}
+
+pub fn point2window(pt: f64, view: Range, window: Range, invert: bool) -> f64 {
+    let moved_pt = if invert { view.max - pt } else { pt - view.min };
+
+    (moved_pt / view.size()) * (window.size() + window.min)
+}
+
+// pt: a point on a 1 dimensional line segment
+// min: the closest point to render on the line segment
+// max: the farthest point to render on the line segment
+// length: the length of the 1 dimensional window space
+// space: the offset from the beginning of the line segment
+fn point2plot(pt: f64, min: f64, max: f64, length: f64, space: f64) -> i16 {
+    (((pt - min) / (max - min)) * (length - space) + space) as i16
 }
