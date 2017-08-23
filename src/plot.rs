@@ -91,32 +91,40 @@ fn clip_line(mut a: (f64, f64), mut b: (f64, f64), view: Range2d) -> Option<((f6
     }
 
     let slope = (b.1 - a.1) / (b.0 - a.0);
-    let offset_b = a.1 - slope * a.0;
 
-    println!(
-        "eq = {}x + {}\na: {:?}, b: {:?}\nview: {:?}",
-        slope,
-        offset_b,
-        a,
-        b,
-        view
-    );
+    let ymin = slope * (view.0.min - a.0) + a.1;
+    let ymax = slope * (view.0.max - a.0) + a.1;
 
     if a.0 < view.0.min {
-        a.0 = view.0.min;
-        a.1 = slope * a.0 + offset_b;
+        a = (view.0.min, ymin);
         return clip_line(a, b, view);
     } else if b.0 < view.0.min {
-        b.0 = view.0.min;
-        b.1 = slope * b.0 + offset_b;
+        b = (view.0.min, ymin);
         return clip_line(a, b, view);
     } else if a.0 > view.0.max {
-        a.0 = view.0.max;
-        a.1 = slope * a.0 + offset_b;
+        a = (view.0.max, ymax);
         return clip_line(a, b, view);
     } else if b.0 > view.0.max {
-        b.0 = view.0.max;
-        b.1 = slope * b.0 + offset_b;
+        b = (view.0.max, ymax);
+        return clip_line(a, b, view);
+    }
+
+    let slope = 1. / slope;
+
+    let xmin = slope * (view.1.min - a.1) + a.0;
+    let xmax = slope * (view.1.max - a.1) + a.0;
+
+    if a.1 < view.1.min {
+        a = (xmin, view.1.min);
+        return clip_line(a, b, view);
+    } else if b.1 < view.1.min {
+        b = (xmin, view.1.min);
+        return clip_line(a, b, view);
+    } else if a.1 > view.1.max {
+        a = (xmax, view.1.max);
+        return clip_line(a, b, view);
+    } else if b.1 > view.1.max {
+        b = (xmax, view.1.max);
         return clip_line(a, b, view);
     }
 
