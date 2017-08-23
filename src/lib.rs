@@ -36,6 +36,7 @@ pub use sdl2_mt::init as sdl2_init;
 #[cfg(feature = "use-sdl2")]
 pub mod draw_sdl;
 
+#[cfg(feature = "use-image")]
 extern crate image;
 
 pub mod draw;
