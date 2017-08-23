@@ -7,7 +7,7 @@ use std::{mem, thread, f64};
 
 use plotbuilder::*;
 
-use draw::{Drawable, Event, Range};
+use draw::{Drawable, Event, Range, Range2d};
 
 pub struct Plot {}
 
@@ -71,82 +71,56 @@ fn set_xy(xy: &Vec<(f64, f64)>, x_vector: &mut Vec<Vec<f64>>, y_vector: &mut Vec
     }
 }
 
-fn simple_clamp(v: f64, r: Range) -> f64 {
-    if v > r.max {
-        r.max
-    } else if v < r.min {
-        r.min
-    } else {
-        v
+fn clip_line(mut a: (f64, f64), mut b: (f64, f64), view: Range2d) -> Option<((f64, f64), (f64, f64))> {
+    //trivial accept
+    if view.contains(a) && view.contains(b) {
+        return Some((a, b));
     }
-}
 
-fn clamp(mut a: (f64, f64), mut b: (f64, f64), w: Range, h: Range) -> ((f64, f64), (f64, f64)) {
+    //trivial reject:
+    // check if both are to the right of the graph
+    if a.0 > view.0.max && b.0 > view.0.max
+    // check if both are to the left
+    || a.0 < view.0.min && b.0 < view.0.min
+    // check if both are above
+    || a.1 > view.1.max && b.1 > view.1.max
+    // check if both are below
+    || a.1 < view.1.min && b.1 < view.1.min
+    {
+        return None;
+    }
+
     let slope = (b.1 - a.1) / (b.0 - a.0);
     let offset_b = a.1 - slope * a.0;
+
     println!(
-        "eq = {}x + {}\na: {:?}, b: {:?}\nw: {:?}, h: {:?}",
+        "eq = {}x + {}\na: {:?}, b: {:?}\nview: {:?}",
         slope,
         offset_b,
         a,
         b,
-        w,
-        h
+        view
     );
-    if a.0 < w.min && b.0 > w.min {
-        a.0 = w.min;
+
+    if a.0 < view.0.min {
+        a.0 = view.0.min;
         a.1 = slope * a.0 + offset_b;
-        clamp(a, b, w, h)
-    } else if a.1 < h.min && b.1 > h.min {
-        let mut x_b = a.0 / offset_b;
-        if !f64::is_finite(x_b) {
-            x_b = 0.0;
-        }
-        a.1 = h.min;
-        a.0 = a.1 / slope + x_b;
-        clamp(a, b, w, h)
-    } else if b.0 < w.min && a.0 > w.min {
-        b.0 = w.min;
+        return clip_line(a, b, view);
+    } else if b.0 < view.0.min {
+        b.0 = view.0.min;
         b.1 = slope * b.0 + offset_b;
-        clamp(a, b, w, h)
-    } else if b.1 < h.min && a.1 > h.min {
-        let mut x_b = b.0 / offset_b;
-        if !f64::is_finite(x_b) {
-            x_b = 0.0;
-        }
-        b.1 = h.min;
-        b.0 = b.1 / slope + x_b;
-        clamp(a, b, w, h)
-    } else if a.0 > w.max && b.0 < w.max {
-        a.0 = w.max;
+        return clip_line(a, b, view);
+    } else if a.0 > view.0.max {
+        a.0 = view.0.max;
         a.1 = slope * a.0 + offset_b;
-        clamp(a, b, w, h)
-    } else if a.1 > h.max && b.1 < h.max {
-        let mut x_b = a.0 / offset_b;
-        if !f64::is_finite(x_b) {
-            x_b = 0.0;
-        }
-        a.1 = h.max;
-        a.0 = a.1 / slope + x_b;
-        clamp(a, b, w, h)
-    } else if b.0 > w.max && a.0 < w.max {
-        b.0 = w.max;
+        return clip_line(a, b, view);
+    } else if b.0 > view.0.max {
+        b.0 = view.0.max;
         b.1 = slope * b.0 + offset_b;
-        clamp(a, b, w, h)
-    } else if b.1 > h.max && a.1 < h.max {
-        let mut x_b = b.0 / offset_b;
-        if !f64::is_finite(x_b) {
-            x_b = 0.0;
-        }
-        b.1 = h.max;
-        b.0 = b.1 / slope + x_b;
-        clamp(a, b, w, h)
-    } else {
-        println!("done\n");
-        a = (simple_clamp(a.0, w), simple_clamp(a.1, h));
-        b = (simple_clamp(b.0, w), simple_clamp(b.1, h));
-        (a, b)
+        return clip_line(a, b, view);
     }
+
+    None
 }
 
 fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, colors: &Vec<[f32; 4]>, plot_bounds: [f64; 4]) {
@@ -164,10 +138,10 @@ fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, c
         max: plot_bounds[1],
     };
 
-    renderer.set_view(w, h);
+    renderer.set_view(Range2d(w, h));
 
     let update_frame = |renderer: &mut Drawable| {
-        let (w, h) = renderer.get_view();
+        let Range2d(w, h) = renderer.get_view();
 
         // calculate margins around plot
         let w_marg = w.size() * margin;
@@ -182,7 +156,7 @@ fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, c
             min: h.min - h_marg,
             max: h.max + h_marg,
         };
-        renderer.set_view(w_fake, h_fake);
+        renderer.set_view(Range2d(w_fake, h_fake));
 
         // the borders are just the edges of the real view
         let border_min = (w.min, h.min);
@@ -203,18 +177,15 @@ fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, c
             for j in 0..len - 1 {
                 let a = (xt[j + 0], yt[j + 0]);
                 let b = (xt[j + 1], yt[j + 1]);
-                let ((xa, ya), (xb, yb)) = clamp(a, b, w, h);
-                let x_invalid = (xa <= w.min && xb <= w.min) || (xa >= w.max && xb >= w.max);
-                let y_invalid = (ya <= h.min && yb <= h.min) || (ya >= h.max && yb >= h.max);
 
-                if !(x_invalid || y_invalid) {
+                if let Some(((xa, ya), (xb, yb))) = clip_line(a, b, Range2d(w, h)) {
                     renderer.thick_line((xa, ya), (xb, yb), 2);
                 }
             }
         }
 
         // reset the view to the real view
-        renderer.set_view(w, h);
+        renderer.set_view(Range2d(w, h));
     };
 
 
@@ -234,7 +205,7 @@ fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, c
                 }
                 Event::MouseScroll(_x, y) => {
                     let multiplier = (y as f64) / 10.0;
-                    let (w, h) = renderer.get_view();
+                    let Range2d(w, h) = renderer.get_view();
                     let w_offset = w.size() * multiplier;
                     let new_w = Range {
                         min: w.min - w_offset,
@@ -245,7 +216,7 @@ fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, c
                         min: h.min - h_offset,
                         max: h.max + h_offset,
                     };
-                    renderer.set_view(new_w, new_h);
+                    renderer.set_view(Range2d(new_w, new_h));
                     update = true;
                 }
                 Event::Resize(_, _) => {

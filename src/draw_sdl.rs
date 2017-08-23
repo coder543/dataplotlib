@@ -12,8 +12,8 @@ use draw::*;
 pub struct DrawSDL {
     sdlh: Sdl2Mt,
     window_id: u32,
-    screenspace: (Range, Range),
-    realspace: (Range, Range),
+    screenspace: Range2d,
+    realspace: Range2d,
     color: pixels::Color,
 }
 
@@ -31,8 +31,8 @@ impl DrawSDL {
         Box::new(DrawSDL {
             sdlh,
             window_id,
-            screenspace: (default_s, default_s),
-            realspace: (default_r, default_r),
+            screenspace: Range2d(default_s, default_s),
+            realspace: Range2d(default_r, default_r),
             color: pixels::Color::RGBA(0, 0, 0, 255),
         })
     }
@@ -40,12 +40,12 @@ impl DrawSDL {
 
 impl Drawable for DrawSDL {
     /// Sets the visible range of worldspace
-    fn set_view(&mut self, x: Range, y: Range) {
-        self.screenspace = (x, y);
+    fn set_view(&mut self, view: Range2d) {
+        self.screenspace = view;
     }
 
     /// Gets the visible range of worldspace
-    fn get_view(&self) -> (Range, Range) {
+    fn get_view(&self) -> Range2d {
         self.screenspace
     }
 
@@ -199,7 +199,7 @@ impl Drawable for DrawSDL {
                 _ => false,
             })
         {
-            self.realspace = (Range { min: 0.0, max: w }, Range { min: 0.0, max: h });
+            self.realspace = Range2d(Range { min: 0.0, max: w }, Range { min: 0.0, max: h });
         }
 
         events

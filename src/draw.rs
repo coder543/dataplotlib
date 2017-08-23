@@ -29,14 +29,33 @@ impl Range {
     pub fn size(&self) -> f64 {
         self.max - self.min
     }
+
+    pub fn contains(&self, pt: f64) -> bool {
+        pt <= self.max && pt >= self.min
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Range2d(pub Range, pub Range);
+
+impl Range2d {
+    pub fn contains(&self, pt: (f64, f64)) -> bool {
+        self.0.contains(pt.0) && self.1.contains(pt.1)
+    }
+}
+
+impl From<(Range, Range)> for Range2d {
+    fn from((a, b): (Range, Range)) -> Self {
+        Range2d(a, b)
+    }
 }
 
 pub trait Drawable: Send {
     /// Sets the visible range of worldspace
-    fn set_view(&mut self, x: Range, y: Range);
+    fn set_view(&mut self, view: Range2d);
 
     /// Gets the visible range of worldspace
-    fn get_view(&self) -> (Range, Range);
+    fn get_view(&self) -> Range2d;
 
     /// Set color for various drawing actions
     fn set_color(&mut self, color: [u8; 4]);
