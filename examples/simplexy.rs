@@ -2,6 +2,7 @@ extern crate dataplotlib;
 use dataplotlib::util::{linspace, zip2};
 use dataplotlib::plotbuilder::PlotBuilder2D;
 use dataplotlib::plotter::Plotter;
+use dataplotlib::draw_sdl::DrawSDL;
 
 fn main() {
     let x = linspace(0, 10, 100);
@@ -18,7 +19,9 @@ fn main() {
     pb.add_simple_xy(xy_sin);
     pb.add_simple_xy(xy_lin);
 
+    let sdlh = dataplotlib::sdl2_init();
+    let sdl2_window = DrawSDL::new(sdlh);
+
     let mut plt = Plotter::new();
-    plt.plot2d(pb);
-    plt.join();
+    plt.plot2d(pb, sdl2_window);
 }

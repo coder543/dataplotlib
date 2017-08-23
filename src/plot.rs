@@ -2,33 +2,14 @@
 //!
 //! Users of **dataplotlib** should not need to access **plot**.
 
-use sdl2;
-
-use sdl2::event::Event;
-use sdl2::pixels;
-use sdl2::keyboard::Keycode;
-
-use sdl2::gfx::primitives::DrawRenderer;
-use sdl2::video::Window;
-
-use std::cmp::min;
 use std::time::Duration;
 use std::{mem, thread, f64};
 
 use plotbuilder::*;
 
+use draw::{Drawable, Event, Range, Range2d};
 
-pub struct Plot {
-}
-
-// pt: a point on a 1 dimensional line segment
-// min: the closest point to render on the line segment
-// max: the farthest point to render on the line segment
-// length: the length of the 1 dimensional window space
-// space: the offset from the beginning of the line segment
-fn point2plot(pt: f64, min: f64, max: f64, length: f64, space: f64) -> i16 {
-    (((pt - min) / (max - min)) * (length - space) + space) as i16
-}
+pub struct Plot {}
 
 fn get_max(user_max: Option<f64>, values: &Vec<f64>) -> f64 {
     if let Some(max) = user_max {
@@ -58,30 +39,24 @@ fn get_min(user_min: Option<f64>, values: &Vec<f64>) -> f64 {
     }
 }
 
-fn f32_4_to_color(col: [f32; 4]) -> pixels::Color {
-    pixels::Color::RGBA((col[0] * 255f32) as u8,
-                        (col[1] * 255f32) as u8,
-                        (col[2] * 255f32) as u8,
-                        (col[3] * 255f32) as u8)
+fn f32_4_to_color(col: [f32; 4]) -> [u8; 4] {
+    [
+        (col[0] * 255f32) as u8,
+        (col[2] * 255f32) as u8,
+        (col[1] * 255f32) as u8,
+        (col[3] * 255f32) as u8,
+    ]
 }
 
-fn draw_borders(bordercol: pixels::Color, bgcol: pixels::Color, space: f64, m: f64, renderer: &mut sdl2::render::Renderer) {
-    renderer.set_draw_color(bordercol);
+fn draw_borders(bordercol: [u8; 4], bgcol: [u8; 4], space: (f64, f64), m: (f64, f64), renderer: &mut Drawable) {
+    renderer.set_color(bordercol);
     renderer.clear();
 
-    renderer.rectangle((space - 1.0) as i16,
-                   (space - 1.0) as i16,
-                   (m - 1.0) as i16,
-                   (m - 1.0) as i16,
-                   pixels::Color::RGBA(0, 0, 255, 255))
-        .unwrap();
+    renderer.set_color(bgcol);
+    renderer.rectangle(space, m);
 
-    renderer.rectangle((space + 1.0) as i16,
-                   (space + 1.0) as i16,
-                   (m + 1.0) as i16,
-                   (m + 1.0) as i16,
-                   bgcol)
-        .unwrap();
+    renderer.set_color([0, 0, 255, 255]);
+    renderer.unfilled_rectangle(space, m);
 }
 
 fn set_xy(xy: &Vec<(f64, f64)>, x_vector: &mut Vec<Vec<f64>>, y_vector: &mut Vec<Vec<f64>>) {
@@ -96,85 +71,168 @@ fn set_xy(xy: &Vec<(f64, f64)>, x_vector: &mut Vec<Vec<f64>>, y_vector: &mut Vec
     }
 }
 
-fn draw_plots(sdl_context: sdl2::Sdl, window: Window, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, colors: &Vec<[f32; 4]>, plot_bounds: [f64; 4]) {
+fn clip_line(mut a: (f64, f64), mut b: (f64, f64), view: Range2d) -> Option<((f64, f64), (f64, f64))> {
+    //trivial accept
+    if view.contains(a) && view.contains(b) {
+        return Some((a, b));
+    }
+
+    //trivial reject:
+    // check if both are to the right of the graph
+    if a.0 > view.0.max && b.0 > view.0.max
+    // check if both are to the left
+    || a.0 < view.0.min && b.0 < view.0.min
+    // check if both are above
+    || a.1 > view.1.max && b.1 > view.1.max
+    // check if both are below
+    || a.1 < view.1.min && b.1 < view.1.min
+    {
+        return None;
+    }
+
+    let slope = (b.1 - a.1) / (b.0 - a.0);
+
+    let ymin = slope * (view.0.min - a.0) + a.1;
+    let ymax = slope * (view.0.max - a.0) + a.1;
+
+    if a.0 < view.0.min {
+        a = (view.0.min, ymin);
+    } else if b.0 < view.0.min {
+        b = (view.0.min, ymin);
+    } else if a.0 > view.0.max {
+        a = (view.0.max, ymax);
+    } else if b.0 > view.0.max {
+        b = (view.0.max, ymax);
+    }
+
+    let slope = 1. / slope;
+
+    let xmin = slope * (view.1.min - a.1) + a.0;
+    let xmax = slope * (view.1.max - a.1) + a.0;
+
+    if a.1 < view.1.min {
+        a = (xmin, view.1.min);
+    } else if b.1 < view.1.min {
+        b = (xmin, view.1.min);
+    } else if a.1 > view.1.max {
+        a = (xmax, view.1.max);
+    } else if b.1 > view.1.max {
+        b = (xmax, view.1.max);
+    }
+
+    return clip_line(a, b, view);
+}
+
+fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, colors: &Vec<[f32; 4]>, plot_bounds: [f64; 4]) {
     let bordercol = f32_4_to_color([0.95, 0.95, 0.95, 1.0]);
     let bgcol = f32_4_to_color([1.0, 1.0, 1.0, 1.0]);
     let margin = 0.05;
-    let invmargin = 1.0 - margin;
 
-    let x_max = plot_bounds[0];
-    let y_max = plot_bounds[1];
-    let x_min = plot_bounds[2];
-    let y_min = plot_bounds[3];
+    let w = Range {
+        min: plot_bounds[2],
+        max: plot_bounds[0],
+    };
 
-    let mut renderer = window.renderer().build().unwrap();
-    let (mut w, mut h) = renderer.output_size().unwrap();
+    let h = Range {
+        min: plot_bounds[3],
+        max: plot_bounds[1],
+    };
 
-    let mut events = sdl_context.event_pump().unwrap();
+    renderer.set_view(Range2d(w, h));
 
-    let mut update_frame = |w, h| {
-        // println!("(w, h) = ({}, {})", w, h);
-        let m = min(w, h) as f64;
-        let space = m * margin;
-        let m = m * invmargin;
+    let update_frame = |renderer: &mut Drawable| {
+        let Range2d(w, h) = renderer.get_view();
 
-        renderer.set_draw_color(bgcol);
-        renderer.clear();
-        draw_borders(bordercol, bgcol, space, m, &mut renderer);
+        // calculate margins around plot
+        let w_marg = w.size() * margin;
+        let h_marg = h.size() * margin;
 
-        let y0 = (m + space) as i16 - point2plot(0.0, y_min, y_max, m, space);
-        let xn = m;
-        println!("xn: {}", xn);
-        renderer.thick_line(space as i16,
-                        y0,
-                        xn as i16,
-                        y0,
-                        2,
-                        pixels::Color::RGBA(0, 0, 0, 255))
-            .unwrap();
+        // set up a "fake" plot view that has extra margins
+        let w_fake = Range {
+            min: w.min - w_marg,
+            max: w.max + w_marg,
+        };
+        let h_fake = Range {
+            min: h.min - h_marg,
+            max: h.max + h_marg,
+        };
+        renderer.set_view(Range2d(w_fake, h_fake));
+
+        // the borders are just the edges of the real view
+        let border_min = (w.min, h.min);
+        let border_max = (w.max, h.max);
+
+        draw_borders(bordercol, bgcol, border_min, border_max, renderer);
 
         for i in 0..colors.len() {
             let color = colors[i];
             let color_rgba = f32_4_to_color(color);
+            renderer.set_color(color_rgba);
 
-            let y_inv = (m + space) as i16;
-            let yt: Vec<i16> = ys[i].iter().map(|y| y_inv - point2plot(*y, y_min, y_max, m, space)).collect();
-            let xt: Vec<i16> = xs[i].iter().map(|x| point2plot(*x, x_min, x_max, m, space)).collect();
+            let yt = &ys[i];
+            let xt = &xs[i];
 
             // The number of points
             let len = xs[i].len();
-            for i in 0..len - 1 {
-                let (xa, ya) = (xt[i + 0], yt[i + 0]);
-                let (xb, yb) = (xt[i + 1], yt[i + 1]);
-                renderer.thick_line(xa, ya, xb, yb, 2, color_rgba).unwrap();
+            for j in 0..len - 1 {
+                let a = (xt[j + 0], yt[j + 0]);
+                let b = (xt[j + 1], yt[j + 1]);
+
+                if let Some(((xa, ya), (xb, yb))) = clip_line(a, b, Range2d(w, h)) {
+                    renderer.thick_line((xa, ya), (xb, yb), 2);
+                }
             }
         }
+
         renderer.present();
+
+        // reset the view to the real view
+        renderer.set_view(Range2d(w, h));
     };
 
-    update_frame(w, h);
+
+    update_frame(renderer);
 
     'main: loop {
-        for event in events.poll_iter() {
+        let mut update = false;
+        for event in renderer.get_events() {
             match event {
                 Event::Quit { .. } => break 'main,
 
-                Event::KeyDown { keycode: Some(keycode), .. } => {
-                    if keycode == Keycode::Escape {
+                Event::KeyDown(keycode) => {
+                    if keycode == 1 {
+                        //Keycode::Escape {
                         break 'main;
                     }
                 }
-                Event::Window { win_event: sdl2::event::WindowEvent::Resized(new_w, new_h), .. } => {
-                    w = new_w as u32;
-                    h = new_h as u32;
-                    update_frame(w, h);
+                Event::MouseScroll(_x, y) => {
+                    let multiplier = (y as f64) / 10.0;
+                    let Range2d(w, h) = renderer.get_view();
+                    let w_offset = w.size() * multiplier;
+                    let new_w = Range {
+                        min: w.min - w_offset,
+                        max: w.max + w_offset,
+                    };
+                    let h_offset = h.size() * multiplier;
+                    let new_h = Range {
+                        min: h.min - h_offset,
+                        max: h.max + h_offset,
+                    };
+                    renderer.set_view(Range2d(new_w, new_h));
+                    update = true;
+                }
+                Event::Resize(_, _) => {
+                    update = true;
                 }
                 _ => {}
             }
         }
 
-        thread::sleep(Duration::from_millis(30));
+        if update {
+            update_frame(renderer);
+        }
 
+        thread::sleep(Duration::from_millis(16));
     }
 }
 
@@ -194,31 +252,19 @@ fn get_plot_bounds(plot_builder: &PlotBuilder2D, xs: &Vec<Vec<f64>>, ys: &Vec<Ve
         min_ys.push(get_min(plot_builder.min_y, &ys[i]));
     }
 
-    let plot_bounds: [f64; 4] = [// Apply the plot extremities to the global extremities
-                                 max_xs.iter().cloned().fold(0. / 0., f64::max),
-                                 max_ys.iter().cloned().fold(0. / 0., f64::max),
-                                 min_xs.iter().cloned().fold(0. / 0., f64::min),
-                                 min_ys.iter().cloned().fold(0. / 0., f64::min)];
-    println!("bounds: {:?}", plot_bounds);
+    let plot_bounds: [f64; 4] = [
+        // Apply the plot extremities to the global extremities
+        max_xs.iter().cloned().fold(0. / 0., f64::max),
+        max_ys.iter().cloned().fold(0. / 0., f64::max),
+        min_xs.iter().cloned().fold(0. / 0., f64::min),
+        min_ys.iter().cloned().fold(0. / 0., f64::min),
+    ];
+
     plot_bounds
 }
 
 impl Plot {
-    pub fn new2d(plot_builder: PlotBuilder2D) {
-
-        let sdl_context = sdl2::init().unwrap();
-        let video_subsys = sdl_context.video().unwrap();
-        let window = video_subsys.window("2D plot", 720, 720)
-            .position_centered()
-            .resizable()
-            .opengl()
-            .build()
-            .unwrap();
-
-        let mut plot_builder = plot_builder;
-
-        // window.set_ups(60);
-
+    pub fn new2d(mut plot_builder: PlotBuilder2D, mut renderer: Box<Drawable>) {
         let mut pvs = Vec::new();
 
         mem::swap(&mut plot_builder.pvs, &mut pvs);
@@ -239,11 +285,6 @@ impl Plot {
 
         // [MAX_X, MAX_Y, MIN_X, MIN_Y]
         let plot_bounds: [f64; 4] = get_plot_bounds(&plot_builder, &x_points, &y_points);
-        draw_plots(sdl_context,
-                   window,
-                   &x_points,
-                   &y_points,
-                   &colors,
-                   plot_bounds);
+        draw_plots(&mut *renderer, &x_points, &y_points, &colors, plot_bounds);
     }
 }

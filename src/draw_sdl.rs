@@ -1,55 +1,53 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use sdl2::{self, Sdl, EventPump};
-use sdl2::render::Renderer;
-use sdl2::event::Event as SdlEvent;
-use sdl2::pixels;
+use sdl2_mt;
+use sdl2_mt::event::Event as SdlEvent;
+use sdl2_mt::pixels;
 
-use sdl2::gfx::primitives::DrawRenderer;
+use sdl2_mt::Sdl2Mt;
 
 use draw::*;
 
 pub struct DrawSDL {
-    context: Sdl,
-    events: EventPump,
-    renderer: Renderer<'static>,
-    screenspace: (Range, Range),
+    sdlh: Sdl2Mt,
+    window_id: u32,
+    screenspace: Range2d,
+    realspace: Range2d,
     color: pixels::Color,
 }
 
 impl DrawSDL {
-    pub fn new() -> DrawSDL {
-        let sdl_context = sdl2::init().unwrap();
-        let video_subsys = sdl_context.video().unwrap();
-        let window = video_subsys.window("2D plot", 720, 720)
-            .position_centered()
-            .resizable()
-            .opengl()
-            .build()
-            .unwrap();
+    pub fn new(sdlh: Sdl2Mt) -> Box<DrawSDL> {
+        let window_id = sdlh.create_simple_window("2D plot", 720, 720).unwrap();
 
-        let events = sdl_context.event_pump().unwrap();
-        let renderer = window.renderer().build().unwrap();
+        let default_s = Range { min: 0.0, max: 0.0 };
 
-        let default = Range {
+        let default_r = Range {
             min: 0.0,
-            max: 0.0,
+            max: 720.0,
         };
 
-        DrawSDL {
-            context: sdl_context,
-            events: events,
-            renderer: renderer,
-            screenspace: (default, default),
+        Box::new(DrawSDL {
+            sdlh,
+            window_id,
+            screenspace: Range2d(default_s, default_s),
+            realspace: Range2d(default_r, default_r),
             color: pixels::Color::RGBA(0, 0, 0, 255),
-        }
+        })
     }
 }
 
 impl Drawable for DrawSDL {
     /// Sets the visible range of worldspace
-    fn set_view(&mut self, x: Range, y: Range) {}
+    fn set_view(&mut self, view: Range2d) {
+        self.screenspace = view;
+    }
+
+    /// Gets the visible range of worldspace
+    fn get_view(&self) -> Range2d {
+        self.screenspace
+    }
 
     /// Set color for various drawing actions
     fn set_color(&mut self, color: [u8; 4]) {
@@ -58,49 +56,158 @@ impl Drawable for DrawSDL {
 
     /// Clears the output surface
     fn clear(&mut self) {
-        self.renderer.set_draw_color(self.color);
-        self.renderer.clear();
+        let window_id = self.window_id;
+        let color = self.color;
+        self.sdlh
+            .run_on_ui_thread(Box::new(move |_sdl, windows| {
+                let canvas = windows.get_mut(&window_id).unwrap();
+                canvas.set_draw_color(color);
+                canvas.clear();
+            }))
+            .unwrap();
     }
 
     /// Draws a line from (x, y) -> (x, y) in worldspace
-    fn line(&mut self, (x1, y1): (f64, f64), (x2, y2): (f64, f64)) {
+    fn line(&mut self, p1: (f64, f64), p2: (f64, f64)) {
+        self.thick_line(p1, p2, 1);
+    }
 
-        // need to use point2plot!
+    /// Draws a line from (x, y) -> (x, y) in worldspace
+    fn thick_line(&mut self, (x1, y1): (f64, f64), (x2, y2): (f64, f64), thickness: u16) {
 
-        self.renderer
-            .thick_line(x1 as i16, y1 as i16, x2 as i16, y2 as i16, 2, self.color)
+        let x1 = point2window(x1, self.screenspace.0, self.realspace.0, false);
+        let y1 = point2window(y1, self.screenspace.1, self.realspace.1, true);
+
+        let x2 = point2window(x2, self.screenspace.0, self.realspace.0, false);
+        let y2 = point2window(y2, self.screenspace.1, self.realspace.1, true);
+
+        let window_id = self.window_id;
+        let color = self.color;
+        self.sdlh
+            .run_on_ui_thread(Box::new(move |_sdl, windows| {
+                let canvas = windows.get_mut(&window_id).unwrap();
+                canvas.set_draw_color(color);
+                canvas
+                    .draw_line((x1 as i32, y1 as i32), (x2 as i32, y2 as i32))
+                    .unwrap();
+            }))
             .unwrap();
     }
 
     /// Draws a rectangle bounded by two corners
     fn rectangle(&mut self, (x1, y1): (f64, f64), (x2, y2): (f64, f64)) {
 
-        // need to use point2plot!
+        let x1 = point2window(x1, self.screenspace.0, self.realspace.0, false);
+        let y1 = point2window(y1, self.screenspace.1, self.realspace.1, false);
 
-        self.renderer
-            .rectangle(x1 as i16, y1 as i16, x2 as i16, y2 as i16, self.color)
+        let x2 = point2window(x2, self.screenspace.0, self.realspace.0, false);
+        let y2 = point2window(y2, self.screenspace.1, self.realspace.1, false);
+
+        let x1 = x1 as i32;
+        let y1 = y1 as i32;
+        let w = (x2 as i32 - x1) as u32;
+        let h = (y2 as i32 - y1) as u32;
+
+        use sdl2_mt::rect::Rect;
+
+        let window_id = self.window_id;
+        let color = self.color;
+        self.sdlh
+            .run_on_ui_thread(Box::new(move |_sdl, windows| {
+                let canvas = windows.get_mut(&window_id).unwrap();
+                canvas.set_draw_color(color);
+                canvas.fill_rect(Rect::new(x1, y1, w, h)).unwrap();
+            }))
+            .unwrap();
+    }
+
+    /// Draws a rectangle bounded by two corners
+    fn unfilled_rectangle(&mut self, (x1, y1): (f64, f64), (x2, y2): (f64, f64)) {
+
+        let x1 = point2window(x1, self.screenspace.0, self.realspace.0, false);
+        let y1 = point2window(y1, self.screenspace.1, self.realspace.1, false);
+
+        let x2 = point2window(x2, self.screenspace.0, self.realspace.0, false);
+        let y2 = point2window(y2, self.screenspace.1, self.realspace.1, false);
+
+        let x1 = x1 as i32;
+        let y1 = y1 as i32;
+        let w = (x2 as i32 - x1) as u32;
+        let h = (y2 as i32 - y1) as u32;
+
+        use sdl2_mt::rect::Rect;
+
+        let window_id = self.window_id;
+        let color = self.color;
+        self.sdlh
+            .run_on_ui_thread(Box::new(move |_sdl, windows| {
+                let canvas = windows.get_mut(&window_id).unwrap();
+                canvas.set_draw_color(color);
+                canvas.draw_rect(Rect::new(x1, y1, w, h)).unwrap();
+            }))
+            .unwrap();
+    }
+
+    fn present(&mut self) {
+        let window_id = self.window_id;
+        self.sdlh
+            .run_on_ui_thread(Box::new(move |_sdl, windows| {
+                let canvas = windows.get_mut(&window_id).unwrap();
+                canvas.present();
+            }))
             .unwrap();
     }
 
     /// Returns the next pending event
     fn get_events(&mut self) -> Vec<Event> {
 
-        let mut events = Vec::new();
+        use std::sync::mpsc::channel;
 
-        for event in self.events.poll_iter() {
-            match event {
-                SdlEvent::Quit { .. } => return vec![Event::Quit],
+        let (tx, rx) = channel();
 
-                SdlEvent::KeyDown { keycode: Some(keycode), .. } => {
-                    events.push(Event::KeyDown(keycode as i32));
+        let window_id = self.window_id;
+
+        self.sdlh
+            .handle_ui_events(Box::new(move |_sdl, _windows, event| {
+                match event {
+                    &SdlEvent::Quit { .. } => tx.send(Event::Quit).unwrap(),
+
+                    &SdlEvent::MouseWheel { x, y, .. } => {
+                        tx.send(Event::MouseScroll(x, y)).unwrap();
+                    }
+
+                    &SdlEvent::KeyDown {
+                        window_id,
+                        keycode: Some(keycode),
+                        ..
+                    } => {
+                        tx.send(Event::KeyDown(keycode as i32)).unwrap();
+                    }
+                    &SdlEvent::Window {
+                        window_id,
+                        win_event: sdl2_mt::event::WindowEvent::Resized(new_w, new_h),
+                        ..
+                    } => {
+                        tx.send(Event::Resize(new_w as f64, new_h as f64)).unwrap();
+                    }
+                    _ => return false,
                 }
-                SdlEvent::Window { win_event: sdl2::event::WindowEvent::Resized(new_w, new_h), .. } => {
-                    events.push(Event::Resize(new_w as f64, new_h as f64));
-                }
-                _ => {}
-            }
+                true
+            }))
+            .unwrap();
+
+        let events: Vec<_> = rx.iter().collect();
+
+        // let's find the last window resize event and save its values
+        if let Some(&Event::Resize(w, h)) =
+            events.iter().rev().find(|&event| match event {
+                &Event::Resize(_, _) => true,
+                _ => false,
+            })
+        {
+            self.realspace = Range2d(Range { min: 0.0, max: w }, Range { min: 0.0, max: h });
         }
 
-        return events;
+        events
     }
 }

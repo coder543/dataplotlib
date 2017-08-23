@@ -29,11 +29,17 @@
 //! }
 //! ```
 
-#[macro_use]
-extern crate sdl2;
+#[cfg(feature = "use-sdl2")]
+extern crate sdl2_mt;
+#[cfg(feature = "use-sdl2")]
+pub use sdl2_mt::init as sdl2_init;
+#[cfg(feature = "use-sdl2")]
+pub mod draw_sdl;
 
-mod draw;
-mod draw_sdl;
+#[cfg(feature = "use-image")]
+extern crate image;
+
+pub mod draw;
 mod plot;
 pub mod plotter;
 pub mod plotbuilder;
