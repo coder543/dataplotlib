@@ -152,6 +152,16 @@ impl Drawable for DrawSDL {
             .unwrap();
     }
 
+    fn present(&mut self) {
+        let window_id = self.window_id;
+        self.sdlh
+            .run_on_ui_thread(Box::new(move |_sdl, windows| {
+                let canvas = windows.get_mut(&window_id).unwrap();
+                canvas.present();
+            }))
+            .unwrap();
+    }
+
     /// Returns the next pending event
     fn get_events(&mut self) -> Vec<Event> {
 

@@ -75,6 +75,9 @@ pub trait Drawable: Send {
     /// Draws a rectangle bounded by two corners
     fn unfilled_rectangle(&mut self, a: (f64, f64), b: (f64, f64));
 
+    /// Presents the previously drawn buffer
+    fn present(&mut self);
+
     /// Returns the next pending events
     fn get_events(&mut self) -> Vec<Event>;
 

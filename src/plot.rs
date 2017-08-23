@@ -97,16 +97,12 @@ fn clip_line(mut a: (f64, f64), mut b: (f64, f64), view: Range2d) -> Option<((f6
 
     if a.0 < view.0.min {
         a = (view.0.min, ymin);
-        return clip_line(a, b, view);
     } else if b.0 < view.0.min {
         b = (view.0.min, ymin);
-        return clip_line(a, b, view);
     } else if a.0 > view.0.max {
         a = (view.0.max, ymax);
-        return clip_line(a, b, view);
     } else if b.0 > view.0.max {
         b = (view.0.max, ymax);
-        return clip_line(a, b, view);
     }
 
     let slope = 1. / slope;
@@ -116,19 +112,15 @@ fn clip_line(mut a: (f64, f64), mut b: (f64, f64), view: Range2d) -> Option<((f6
 
     if a.1 < view.1.min {
         a = (xmin, view.1.min);
-        return clip_line(a, b, view);
     } else if b.1 < view.1.min {
         b = (xmin, view.1.min);
-        return clip_line(a, b, view);
     } else if a.1 > view.1.max {
         a = (xmax, view.1.max);
-        return clip_line(a, b, view);
     } else if b.1 > view.1.max {
         b = (xmax, view.1.max);
-        return clip_line(a, b, view);
     }
 
-    None
+    return clip_line(a, b, view);
 }
 
 fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, colors: &Vec<[f32; 4]>, plot_bounds: [f64; 4]) {
@@ -191,6 +183,8 @@ fn draw_plots(renderer: &mut Drawable, xs: &Vec<Vec<f64>>, ys: &Vec<Vec<f64>>, c
                 }
             }
         }
+
+        renderer.present();
 
         // reset the view to the real view
         renderer.set_view(Range2d(w, h));
