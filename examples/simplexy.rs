@@ -17,7 +17,7 @@ fn main() {
 
     // Adds the sin plot and the cos plot
     pb.add_simple_xy(xy_sin);
-    // pb.add_simple_xy(xy_lin);
+    pb.add_simple_xy(xy_lin);
 
     let sdlh = dataplotlib::sdl2_init();
     let sdl2_window = DrawSDL::new(sdlh);
