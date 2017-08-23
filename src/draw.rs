@@ -90,12 +90,3 @@ pub fn point2window(pt: f64, view: Range, window: Range, invert: bool) -> f64 {
 
     (moved_pt / view.size()) * (window.size() + window.min)
 }
-
-// pt: a point on a 1 dimensional line segment
-// min: the closest point to render on the line segment
-// max: the farthest point to render on the line segment
-// length: the length of the 1 dimensional window space
-// space: the offset from the beginning of the line segment
-fn point2plot(pt: f64, min: f64, max: f64, length: f64, space: f64) -> i16 {
-    (((pt - min) / (max - min)) * (length - space) + space) as i16
-}
