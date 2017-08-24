@@ -8,13 +8,9 @@ pub struct DrawImage {
     realspace: Range2d,
     color: [u8; 4],
 }
-#![allow(dead_code)]
-#![allow(unused_variables)]
 
 impl DrawImage {
-    pub fn new(sdlh: Sdl2Mt) -> Box<DrawSDL> {
-        let window_id = sdlh.create_simple_window("2D plot", 720, 720).unwrap();
-
+    pub fn new() -> Box<DrawImage> {
         let default_s = Range { min: 0.0, max: 0.0 };
 
         let default_r = Range {
@@ -22,12 +18,10 @@ impl DrawImage {
             max: 720.0,
         };
 
-        Box::new(DrawSDL {
-            sdlh,
-            window_id,
+        Box::new(DrawImage {
             screenspace: Range2d(default_s, default_s),
             realspace: Range2d(default_r, default_r),
-            color: pixels::Color::RGBA(0, 0, 0, 255),
+            color: [0, 0, 0, 255],
         })
     }
 }
@@ -45,7 +39,7 @@ impl Drawable for DrawImage {
 
     /// Set color for various drawing actions
     fn set_color(&mut self, color: [u8; 4]) {
-        self.color = pixels::Color::RGBA(color[0], color[1], color[2], color[3]);
+        self.color = color;
     }
 
     /// Clears the output surface
