@@ -22,9 +22,8 @@ pub enum PlotVals2D {
     AnimFunColor([f32; 4], AnimFn),
 }
 
-/// `PlotBuilder2D` contains all of the necessary information to create a
-/// series of stacked 2 dimensional plots. For the moment, only provide one
-/// `PlotVals2D`, otherwise things will probably go poorly.
+/// `PlotBuilder2D` contains all of the necessary information to create a series of stacked 2 dimensional plots.
+/// For the moment, only provide one `PlotVals2D`, otherwise things will probably go poorly.
 #[derive(Clone)]
 pub struct PlotBuilder2D {
     /// **pvs** contains the **P**lot **V** alue **s**

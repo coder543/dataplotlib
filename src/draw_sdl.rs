@@ -9,6 +9,7 @@ use sdl2_mt::Sdl2Mt;
 
 use draw::*;
 
+/// Provides an SDL2-based interactive plotting backend
 pub struct DrawSDL {
     sdlh: Sdl2Mt,
     window_id: u32,
