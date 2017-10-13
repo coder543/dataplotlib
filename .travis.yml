@@ -4,6 +4,7 @@ rust:
   - stable
   - nightly
 before_install:
+  - sudo apt-get -qq updates
   - sudo apt-get install -y libsdl2-dev
 script:
   - cargo build -v
