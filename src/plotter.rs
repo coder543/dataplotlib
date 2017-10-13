@@ -59,6 +59,8 @@ mod test {
     use super::*;
     use plotbuilder::*;
     use util::*;
+    use draw_sdl::DrawSDL;
+    use sdl2_mt;
 
     #[test]
     fn plot2d_test() {
@@ -67,10 +69,13 @@ mod test {
         let y = (&x).iter().map(|x| x.sin()).collect();
         let xy = zip2(&x, &y);
 
+        let sdlh = sdl2_mt::init();
+        let sdl2_window = DrawSDL::new(sdlh);
+
         let mut pb1 = PlotBuilder2D::new();
         pb1.add_simple_xy(xy);
         let mut plt = Plotter::new();
-        plt.plot2d(pb1);
-        plt.join();
+        plt.plot2d(pb1, sdl2_window);
+        plt.disown();
     }
 }
