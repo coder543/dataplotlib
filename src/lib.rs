@@ -22,13 +22,17 @@
 //!
 //!     // Adds the sin plot and the linear plot with custom colors
 //!     pb.add_color_xy(xy_sin, [1.0, 0.0, 0.0, 1.0]);
-//!     pb.add_color_xy(xy_lin, [0.0, 0.0, 1.0, 1.0]);
+//!     pb.add_color_xy(xy_lin, [0.0, 0.75, 0.0, 1.0]);
+//!
+//!     let sdlh = dataplotlib::sdl2_init();
+//!     let sdl2_window = DrawSDL::new(sdlh);
 //!
 //!     let sdlh = dataplotlib::sdl2_init();
 //!     let sdl2_window = DrawSDL::new(sdlh);
 //!
 //!     let mut plt = Plotter::new();
 //!     plt.plot2d(pb, sdl2_window);
+//! # plt.disown(); // make sure the doc test doesn't last forever
 //! }
 //! ```
 

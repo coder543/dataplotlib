@@ -42,8 +42,8 @@ fn get_min(user_min: Option<f64>, values: &Vec<f64>) -> f64 {
 fn f32_4_to_color(col: [f32; 4]) -> [u8; 4] {
     [
         (col[0] * 255f32) as u8,
-        (col[2] * 255f32) as u8,
         (col[1] * 255f32) as u8,
+        (col[2] * 255f32) as u8,
         (col[3] * 255f32) as u8,
     ]
 }

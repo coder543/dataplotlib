@@ -1,0 +1,13 @@
+# heavily influenced by https://github.com/PistonDevelopers/piston-examples/blob/a473c4baa1262bbf6916b677f3bdcde2b6d3c1b5/.travis.yml
+language: rust
+rust:
+  - stable
+  - nightly
+before_install:
+    - wget https://www.libsdl.org/release/SDL2-2.0.5.tar.gz -O SDL2-2.0.5.tar.gz
+    - tar -xzvf SDL2-2.0.5.tar.gz
+install:
+  - (cd SDL2-2.0.5 && ./configure && make && sudo make install)
+script:
+  - cargo build -v
+  - cargo test --no-run
