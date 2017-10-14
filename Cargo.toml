@@ -8,7 +8,7 @@ name = "dataplotlib"
 version = "0.1.3"
 
 [features]
-default = ["use-sdl2"]
+default = ["use-image"]
 use-sdl2 = ["sdl2_mt"]
 use-image = ["image"]
 
