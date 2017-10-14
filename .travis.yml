@@ -10,4 +10,4 @@ install:
   - (cd SDL2-2.0.5 && ./configure && make && sudo make install)
 script:
   - cargo build -v
-  - cargo test
+  - cargo test --no-run
