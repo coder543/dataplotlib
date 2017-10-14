@@ -55,6 +55,7 @@ impl Drop for Plotter {
 }
 
 #[cfg(test)]
+#[cfg(feature="use-sdl2")]
 mod test {
     use super::*;
     use plotbuilder::*;
